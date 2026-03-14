@@ -3,8 +3,8 @@ import { useAuth } from "../hooks/useAuth.js";
 
 const stats = [
   { label: "Materials", value: "Live", note: "Inventory can be created and updated" },
-  { label: "Orders", value: "Next", note: "Approval flow is the next module to build" },
-  { label: "Stock Logs", value: "Soon", note: "Production and adjustment logs are pending" },
+  { label: "Orders", value: "Live", note: "Approval now updates order status and stock" },
+  { label: "Stock Logs", value: "Live", note: "Production and adjustment logs are now available" },
 ];
 
 const actions = [
@@ -17,6 +17,11 @@ const actions = [
     title: "Manage Materials",
     desc: "Update material details and keep visible stock accurate.",
     path: "/manager/materials",
+  },
+  {
+    title: "Stock Control",
+    desc: "Record production, manual adjustments, and review stock history.",
+    path: "/manager/stock",
   },
 ];
 

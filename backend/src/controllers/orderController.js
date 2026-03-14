@@ -1,5 +1,6 @@
 import Material from "../models/Material.js";
 import Order from "../models/Order.js";
+import { applyStockChange } from "../services/stockService.js";
 
 const populateOrderQuery = [
   {
@@ -145,39 +146,30 @@ export const updateOrderStatus = async (req, res) => {
       });
     }
 
-    const stockAdjustments = [];
-
     if (orderStatus === "APPROVED") {
       for (const item of order.items) {
-        const updatedMaterial = await Material.findOneAndUpdate(
-          {
-            _id: item.material,
-            stock: { $gte: item.quantity },
-          },
-          {
-            $inc: { stock: -item.quantity },
-          },
-          {
-            new: true,
-          }
-        );
-
-        if (!updatedMaterial) {
-          for (const adjustment of stockAdjustments) {
-            await Material.findByIdAndUpdate(adjustment.materialId, {
-              $inc: { stock: adjustment.quantity },
-            });
-          }
-
+        const material = await Material.findById(item.material);
+        if (!material || material.stock < item.quantity) {
           return res.status(400).json({
             message: `Insufficient stock to approve ${item.materialName}`,
           });
         }
+      }
 
-        stockAdjustments.push({
-          materialId: item.material,
-          quantity: item.quantity,
-        });
+      for (const item of order.items) {
+        try {
+          await applyStockChange({
+            materialId: item.material,
+            quantityChange: -item.quantity,
+            changeType: "ORDER_APPROVAL",
+            note: `Stock deducted for approved order ${order._id} (${item.materialName})`,
+            updatedBy: req.user._id,
+          });
+        } catch (stockErr) {
+          return res.status(400).json({
+            message: stockErr.message || `Insufficient stock to approve ${item.materialName}`,
+          });
+        }
       }
     }
 

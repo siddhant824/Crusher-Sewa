@@ -12,6 +12,7 @@ import AddMaterial from "../pages/admin/AddMaterial.jsx";
 import ManageMaterials from "../pages/admin/ManageMaterials.jsx";
 import ManagerDashboard from "../pages/ManagerDashboard.jsx";
 import OrdersManagement from "../pages/OrdersManagement.jsx";
+import StockControl from "../pages/StockControl.jsx";
 import Materials from "../pages/contractor/Materials.jsx";
 import Orders from "../pages/contractor/Orders.jsx";
 import Profile from "../pages/contractor/Profile.jsx";
@@ -46,6 +47,7 @@ const AppRoutes = () => (
       <Route path="/admin/materials/add" element={<AddMaterial />} />
       <Route path="/admin/materials" element={<ManageMaterials />} />
       <Route path="/admin/orders" element={<OrdersManagement />} />
+      <Route path="/admin/stock" element={<StockControl />} />
     </Route>
     <Route
       path="/manager"
@@ -66,6 +68,7 @@ const AppRoutes = () => (
       <Route path="/manager/materials/add" element={<AddMaterial />} />
       <Route path="/manager/materials" element={<ManageMaterials />} />
       <Route path="/manager/orders" element={<OrdersManagement />} />
+      <Route path="/manager/stock" element={<StockControl />} />
     </Route>
     <Route
       path="/contractor"

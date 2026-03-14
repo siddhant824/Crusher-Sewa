@@ -2,6 +2,7 @@ import Material from "../models/Material.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { applyStockChange } from "../services/stockService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -55,12 +56,24 @@ export const createMaterial = async (req, res) => {
       name: name.trim(),
       ratePerCuMetre: rate,
       unit: unit?.trim() || "cubic metre",
-      stock: stockValue,
+      stock: 0,
       imageUrl,
     });
 
+    if (stockValue > 0) {
+      await applyStockChange({
+        materialId: material._id,
+        quantityChange: stockValue,
+        changeType: "MANUAL_ADJUSTMENT",
+        note: "Opening stock entered while creating material",
+        updatedBy: req.user._id,
+      });
+    }
+
+    const createdMaterial = await Material.findById(material._id);
+
     return res.status(201).json({
-      material,
+      material: createdMaterial,
       message: "Material created successfully",
     });
   } catch (err) {
@@ -117,14 +130,14 @@ export const updateMaterial = async (req, res) => {
       updateData.unit = unit.trim();
     }
 
+    let targetStockValue;
     if (stock !== undefined) {
-      const stockValue = parseFloat(stock);
-      if (isNaN(stockValue) || stockValue < 0) {
+      targetStockValue = parseFloat(stock);
+      if (isNaN(targetStockValue) || targetStockValue < 0) {
         return res.status(400).json({
           message: "stock must be a valid positive number",
         });
       }
-      updateData.stock = stockValue;
     }
 
     // Handle image upload (optional - only if new image is uploaded)
@@ -154,8 +167,20 @@ export const updateMaterial = async (req, res) => {
       { new: true, runValidators: true }
     );
 
+    if (stock !== undefined && targetStockValue !== material.stock) {
+      await applyStockChange({
+        materialId: material._id,
+        quantityChange: Number((targetStockValue - material.stock).toFixed(2)),
+        changeType: "MANUAL_ADJUSTMENT",
+        note: "Stock updated from material management",
+        updatedBy: req.user._id,
+      });
+    }
+
+    const refreshedMaterial = await Material.findById(id);
+
     return res.json({
-      material: updatedMaterial,
+      material: refreshedMaterial || updatedMaterial,
       message: "Material updated successfully",
     });
   } catch (err) {

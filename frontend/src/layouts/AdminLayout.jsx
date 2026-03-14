@@ -11,6 +11,9 @@ const AdminLayout = () => {
     if (path.includes("/materials") && location.pathname.includes("/materials")) {
       return location.pathname.startsWith(basePath + "/materials");
     }
+    if (path.includes("/stock") && location.pathname.includes("/stock")) {
+      return location.pathname.startsWith(basePath + "/stock");
+    }
     return location.pathname.startsWith(path + "/");
   };
 
@@ -24,6 +27,7 @@ const AdminLayout = () => {
     { path: `${basePath}/materials/add`, label: "Add Material", icon: "plus", show: true },
     { path: `${basePath}/materials`, label: "Manage Materials", icon: "box", show: true },
     { path: `${basePath}/orders`, label: "Orders", icon: "clipboard", show: true },
+    { path: `${basePath}/stock`, label: "Stock Control", icon: "chart", show: true },
   ].filter(item => item.show);
 
   const getIcon = (name) => {
@@ -56,6 +60,12 @@ const AdminLayout = () => {
         return (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+        );
+      case "chart":
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 20V10m5 10V4m5 16v-6" />
           </svg>
         );
       default:

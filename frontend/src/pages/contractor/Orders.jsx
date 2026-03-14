@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { createOrder, getMyOrders } from "../../services/ordersApi.js";
-import { clearDraftOrder, getDraftOrder } from "../../utils/orderDraft.js";
+import { clearDraftOrder, getDraftOrder, saveDraftOrder } from "../../utils/orderDraft.js";
 
 const statusStyles = {
   PENDING: "bg-amber-50 text-amber-700 border-amber-200",
@@ -45,6 +45,31 @@ const Orders = () => {
     }
   };
 
+  const updateDraftItems = (updater) => {
+    setDraftItems((current) => {
+      const nextItems = updater(current)
+        .map((item) => {
+          const quantity = Number(item.quantity);
+          const ratePerCuMetre = Number(item.ratePerCuMetre);
+
+          if (quantity <= 0) {
+            return null;
+          }
+
+          return {
+            ...item,
+            quantity,
+            ratePerCuMetre,
+            subtotal: Number((quantity * ratePerCuMetre).toFixed(2)),
+          };
+        })
+        .filter(Boolean);
+
+      saveDraftOrder(nextItems);
+      return nextItems;
+    });
+  };
+
   const draftTotal = draftItems.reduce(
     (sum, item) => sum + Number(item.subtotal || 0),
     0
@@ -73,6 +98,26 @@ const Orders = () => {
     } finally {
       setConfirmingDraft(false);
     }
+  };
+
+  const handleDraftQuantityChange = (materialId, value) => {
+    updateDraftItems((current) =>
+      current.map((item) =>
+        item.materialId === materialId
+          ? { ...item, quantity: value === "" ? "" : Number(value) }
+          : item
+      )
+    );
+  };
+
+  const changeDraftQuantity = (materialId, delta) => {
+    updateDraftItems((current) =>
+      current.map((item) =>
+        item.materialId === materialId
+          ? { ...item, quantity: Math.max(Number(item.quantity || 0) + delta, 0) }
+          : item
+      )
+    );
   };
 
   if (loading) {
@@ -110,7 +155,7 @@ const Orders = () => {
             {draftItems.map((item) => (
               <div
                 key={`draft-${item.materialId}`}
-                className="flex items-center justify-between gap-4 bg-white border border-amber-100 rounded-lg p-3"
+                className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 bg-white border border-amber-100 rounded-lg p-3"
               >
                 <div>
                   <p className="font-medium text-stone-900">{item.name}</p>
@@ -118,9 +163,35 @@ const Orders = () => {
                     {item.quantity} {item.unit} x Rs. {Number(item.ratePerCuMetre).toFixed(2)}
                   </p>
                 </div>
-                <p className="font-medium text-stone-900">
-                  Rs. {Number(item.subtotal).toFixed(2)}
-                </p>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => changeDraftQuantity(item.materialId, -1)}
+                      className="w-9 h-9 rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-50"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={item.quantity}
+                      onChange={(e) => handleDraftQuantityChange(item.materialId, e.target.value)}
+                      className="w-24 px-3 py-2 text-sm border border-stone-300 rounded-lg"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => changeDraftQuantity(item.materialId, 1)}
+                      className="w-9 h-9 rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-50"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <p className="font-medium text-stone-900 min-w-24 text-right">
+                    Rs. {Number(item.subtotal).toFixed(2)}
+                  </p>
+                </div>
               </div>
             ))}
           </div>

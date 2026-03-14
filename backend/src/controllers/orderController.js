@@ -139,6 +139,48 @@ export const updateOrderStatus = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
+    if (order.orderStatus !== "PENDING") {
+      return res.status(400).json({
+        message: "Only pending orders can be reviewed",
+      });
+    }
+
+    const stockAdjustments = [];
+
+    if (orderStatus === "APPROVED") {
+      for (const item of order.items) {
+        const updatedMaterial = await Material.findOneAndUpdate(
+          {
+            _id: item.material,
+            stock: { $gte: item.quantity },
+          },
+          {
+            $inc: { stock: -item.quantity },
+          },
+          {
+            new: true,
+          }
+        );
+
+        if (!updatedMaterial) {
+          for (const adjustment of stockAdjustments) {
+            await Material.findByIdAndUpdate(adjustment.materialId, {
+              $inc: { stock: adjustment.quantity },
+            });
+          }
+
+          return res.status(400).json({
+            message: `Insufficient stock to approve ${item.materialName}`,
+          });
+        }
+
+        stockAdjustments.push({
+          materialId: item.material,
+          quantity: item.quantity,
+        });
+      }
+    }
+
     order.orderStatus = orderStatus;
     order.reviewNote = reviewNote?.trim() || "";
     order.approvedBy = req.user._id;

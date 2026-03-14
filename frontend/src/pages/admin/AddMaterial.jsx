@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "../../hooks/useAuth.js";
 import { createMaterial } from "../../services/materialsApi.js";
 
 const AddMaterial = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useAuth();
   const basePath = user?.role === "ADMIN" ? "/admin" : "/manager";
   const [formData, setFormData] = useState({

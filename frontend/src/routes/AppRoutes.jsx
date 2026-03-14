@@ -11,6 +11,7 @@ import ManageUsers from "../pages/admin/ManageUsers.jsx";
 import AddMaterial from "../pages/admin/AddMaterial.jsx";
 import ManageMaterials from "../pages/admin/ManageMaterials.jsx";
 import ManagerDashboard from "../pages/ManagerDashboard.jsx";
+import OrdersManagement from "../pages/OrdersManagement.jsx";
 import Materials from "../pages/contractor/Materials.jsx";
 import Orders from "../pages/contractor/Orders.jsx";
 import Profile from "../pages/contractor/Profile.jsx";
@@ -44,6 +45,7 @@ const AppRoutes = () => (
       <Route path="/admin/users" element={<ManageUsers />} />
       <Route path="/admin/materials/add" element={<AddMaterial />} />
       <Route path="/admin/materials" element={<ManageMaterials />} />
+      <Route path="/admin/orders" element={<OrdersManagement />} />
     </Route>
     <Route
       path="/manager"
@@ -54,22 +56,16 @@ const AppRoutes = () => (
       }
     />
     <Route
-      path="/manager/dashboard"
-      element={
-        <PrivateRoute allowedRoles={["MANAGER", "ADMIN"]}>
-          <ManagerDashboard />
-        </PrivateRoute>
-      }
-    />
-    <Route
       element={
         <PrivateRoute allowedRoles={["MANAGER", "ADMIN"]}>
           <AdminLayout />
         </PrivateRoute>
       }
     >
+      <Route path="/manager/dashboard" element={<ManagerDashboard />} />
       <Route path="/manager/materials/add" element={<AddMaterial />} />
       <Route path="/manager/materials" element={<ManageMaterials />} />
+      <Route path="/manager/orders" element={<OrdersManagement />} />
     </Route>
     <Route
       path="/contractor"

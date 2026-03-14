@@ -15,7 +15,7 @@ const Register = () => {
     setLoading(true);
     try {
       await register(name, email, password);
-    } catch (err) {
+    } catch {
       // Error toast is handled in AuthContext
     } finally {
       setLoading(false);

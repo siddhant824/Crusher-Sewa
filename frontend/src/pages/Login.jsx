@@ -14,7 +14,7 @@ const Login = () => {
     setLoading(true);
     try {
       await login(email, password);
-    } catch (err) {
+    } catch {
       // Error toast is handled in AuthContext
     } finally {
       setLoading(false);

@@ -8,6 +8,7 @@ import { ensureAdminSeed } from "./models/User.js";
 import authRoutes from "./routes/authRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import materialRoutes from "./routes/materialRoutes.js";
+import orderRoutes from "./routes/orderRoutes.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -36,6 +37,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/materials", materialRoutes);
+app.use("/api/orders", orderRoutes);
 
 // Start server after DB connects
 const start = async () => {

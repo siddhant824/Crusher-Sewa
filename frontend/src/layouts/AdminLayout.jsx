@@ -23,6 +23,7 @@ const AdminLayout = () => {
     { path: `${basePath}/users`, label: "Manage Users", icon: "users", show: isAdmin },
     { path: `${basePath}/materials/add`, label: "Add Material", icon: "plus", show: true },
     { path: `${basePath}/materials`, label: "Manage Materials", icon: "box", show: true },
+    { path: `${basePath}/orders`, label: "Orders", icon: "clipboard", show: true },
   ].filter(item => item.show);
 
   const getIcon = (name) => {
@@ -49,6 +50,12 @@ const AdminLayout = () => {
         return (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
+        );
+      case "clipboard":
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
         );
       default:

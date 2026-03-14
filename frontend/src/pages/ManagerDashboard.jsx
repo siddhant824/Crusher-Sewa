@@ -1,87 +1,82 @@
-import { useAuth } from "../hooks/useAuth.js";
 import { Link } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth.js";
+
+const stats = [
+  { label: "Materials", value: "Live", note: "Inventory can be created and updated" },
+  { label: "Orders", value: "Next", note: "Approval flow is the next module to build" },
+  { label: "Stock Logs", value: "Soon", note: "Production and adjustment logs are pending" },
+];
+
+const actions = [
+  {
+    title: "Add Material",
+    desc: "Create a new material with rate, stock, and optional image.",
+    path: "/manager/materials/add",
+  },
+  {
+    title: "Manage Materials",
+    desc: "Update material details and keep visible stock accurate.",
+    path: "/manager/materials",
+  },
+];
 
 const ManagerDashboard = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-stone-50">
-      {/* Header */}
-      <header className="bg-white border-b border-stone-200 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">CS</span>
-              </div>
-              <div>
-                <span className="text-base font-semibold text-stone-800">Crusher Sewa</span>
-                <span className="text-xs text-stone-400 ml-2">Manager</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-stone-100 rounded-lg">
-                <div className="w-6 h-6 bg-teal-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs font-medium">
-                    {user?.name?.charAt(0) || "M"}
-                  </span>
-                </div>
-                <span className="text-sm text-stone-700">{user?.name}</span>
-              </div>
-              <button
-                onClick={logout}
-                className="px-4 py-2 text-sm text-stone-600 hover:text-stone-900 font-medium"
-              >
-                Logout
-              </button>
-            </div>
+    <div>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-stone-900">
+          Welcome back, {user?.name?.split(" ")[0]}
+        </h1>
+        <p className="text-stone-500 mt-1">
+          Manage materials and prepare the next operational modules for orders and stock flow.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        {stats.map((stat) => (
+          <div
+            key={stat.label}
+            className="bg-white border border-stone-200 rounded-xl p-5"
+          >
+            <p className="text-sm text-stone-500 mb-1">{stat.label}</p>
+            <p className="text-2xl font-semibold text-stone-900">{stat.value}</p>
+            <p className="text-sm text-stone-500 mt-1">{stat.note}</p>
           </div>
-        </div>
-      </header>
+        ))}
+      </div>
 
-      {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-6 py-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-stone-900">
-            Welcome back, {user?.name?.split(" ")[0]}
-          </h1>
-          <p className="text-stone-500 mt-1">
-            Manage materials, orders, and deliveries
-          </p>
-        </div>
-
-        {/* Coming Soon */}
-        <div className="bg-white border border-stone-200 rounded-xl p-12 text-center">
-          <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-semibold text-stone-900 mb-2">Manager Dashboard Coming Soon</h3>
-          <p className="text-stone-500 max-w-md mx-auto">
-            The manager dashboard will include tools to manage materials, process orders, 
-            track deliveries, and generate reports.
-          </p>
-        </div>
-
-        {/* Planned Features */}
-        <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[
-            { title: "Materials", desc: "Add, edit, and manage inventory", icon: "📦" },
-            { title: "Orders", desc: "Process and approve customer orders", icon: "📋" },
-            { title: "Deliveries", desc: "Track and manage delivery trips", icon: "🚚" },
-            { title: "Invoices", desc: "Generate and send invoices", icon: "📄" },
-            { title: "Reports", desc: "View sales and inventory reports", icon: "📊" },
-            { title: "Settings", desc: "Configure system preferences", icon: "⚙️" },
-          ].map((feature) => (
-            <div key={feature.title} className="bg-white border border-stone-200 rounded-xl p-5 opacity-60">
-              <div className="text-2xl mb-2">{feature.icon}</div>
-              <h4 className="font-medium text-stone-900">{feature.title}</h4>
-              <p className="text-sm text-stone-500 mt-1">{feature.desc}</p>
-            </div>
+      <div className="mb-8">
+        <h2 className="text-lg font-semibold text-stone-900 mb-4">Quick Actions</h2>
+        <div className="grid sm:grid-cols-2 gap-4">
+          {actions.map((action) => (
+            <Link
+              key={action.path}
+              to={action.path}
+              className="bg-white border border-stone-200 rounded-xl p-5 hover:border-teal-300 hover:shadow-sm transition-all"
+            >
+              <h3 className="font-medium text-stone-900">{action.title}</h3>
+              <p className="text-sm text-stone-500 mt-1">{action.desc}</p>
+            </Link>
           ))}
         </div>
-      </main>
+      </div>
+
+      <div className="bg-stone-50 border border-stone-200 rounded-xl p-5">
+        <div className="flex items-start gap-3">
+          <svg className="w-5 h-5 text-stone-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <p className="text-sm font-medium text-stone-700">Manager Workspace</p>
+            <p className="text-sm text-stone-500 mt-1">
+              This dashboard now shares the same sidebar layout as the rest of the manager area.
+              Orders, production, deliveries, invoices, and payments are the next modules to add.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

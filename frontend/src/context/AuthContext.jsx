@@ -1,4 +1,4 @@
-import { createContext, useEffect, useMemo, useState } from "react";
+import { createContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
@@ -119,10 +119,7 @@ export const AuthProvider = ({ children }) => {
     navigate("/");
   };
 
-  const value = useMemo(
-    () => ({ user, token, login, register, logout }),
-    [user, token]
-  );
+  const value = { user, token, login, register, logout };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

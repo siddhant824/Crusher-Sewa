@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { getUsers, updateUserStatus } from "../../services/adminApi.js";
 
 const ManageUsers = () => {
   const [users, setUsers] = useState([]);
-  const [filteredUsers, setFilteredUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -15,10 +14,6 @@ const ManageUsers = () => {
   useEffect(() => {
     fetchUsers();
   }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [users, roleFilter, statusFilter, searchQuery]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -32,7 +27,7 @@ const ManageUsers = () => {
     }
   };
 
-  const applyFilters = () => {
+  const filteredUsers = useMemo(() => {
     let filtered = [...users];
 
     if (roleFilter !== "ALL") {
@@ -53,8 +48,8 @@ const ManageUsers = () => {
       );
     }
 
-    setFilteredUsers(filtered);
-  };
+    return filtered;
+  }, [users, roleFilter, statusFilter, searchQuery]);
 
   const handleStatusToggle = async (userId, currentStatus) => {
     setUpdatingId(userId);

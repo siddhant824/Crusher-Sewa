@@ -20,6 +20,7 @@ const ManageMaterials = () => {
   const [deletingId, setDeletingId] = useState(null);
 
   const isAdmin = user?.role === "ADMIN";
+  const basePath = isAdmin ? "/admin" : "/manager";
 
   useEffect(() => {
     fetchMaterials();
@@ -172,7 +173,7 @@ const ManageMaterials = () => {
           </p>
         </div>
         <Link
-          to="/admin/materials/add"
+          to={`${basePath}/materials/add`}
           className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium text-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

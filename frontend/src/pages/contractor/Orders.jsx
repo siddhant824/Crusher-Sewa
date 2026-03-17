@@ -22,6 +22,13 @@ const paymentStyles = {
   PAID: "bg-teal-50 text-teal-700",
 };
 
+const tripStatusStyles = {
+  PENDING: "bg-stone-100 text-stone-700",
+  IN_TRANSIT: "bg-sky-50 text-sky-700",
+  DELIVERED: "bg-teal-50 text-teal-700",
+  CANCELLED: "bg-rose-50 text-rose-700",
+};
+
 const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [draftItems, setDraftItems] = useState([]);
@@ -271,6 +278,43 @@ const Orders = () => {
                   </div>
                 ))}
               </div>
+
+              {order.deliveryTrips?.length > 0 && (
+                <div className="mt-4 border-t border-stone-100 pt-4">
+                  <h3 className="font-medium text-stone-900 mb-3">Delivery Trips</h3>
+                  <div className="space-y-3">
+                    {order.deliveryTrips.map((trip) => (
+                      <div
+                        key={trip._id}
+                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-stone-100 rounded-lg p-3"
+                      >
+                        <div>
+                          <p className="font-medium text-stone-900">Trip #{trip.tripNumber}</p>
+                          <p className="text-sm text-stone-500">
+                            {trip.materialName}: {trip.deliveredQuantity} {trip.unit} via {trip.truck?.name} ({trip.truck?.plateNumber})
+                          </p>
+                          {trip.dispatchedAt && (
+                            <p className="text-xs text-stone-400 mt-1">
+                              Dispatched: {new Date(trip.dispatchedAt).toLocaleString()}
+                            </p>
+                          )}
+                          {trip.deliveredAt && (
+                            <p className="text-xs text-stone-400 mt-1">
+                              Delivered: {new Date(trip.deliveredAt).toLocaleString()}
+                            </p>
+                          )}
+                          {trip.note && (
+                            <p className="text-sm text-stone-600 mt-1">{trip.note}</p>
+                          )}
+                        </div>
+                        <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${tripStatusStyles[trip.status] || tripStatusStyles.PENDING}`}>
+                          {trip.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

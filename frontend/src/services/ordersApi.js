@@ -53,3 +53,23 @@ export const updateOrderStatus = async (orderId, orderStatus, reviewNote = "") =
 
   return parseResponse(res);
 };
+
+export const createDeliveryTrip = async (payload) => {
+  const res = await fetch(`${apiBase}/api/delivery-trips`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+
+  return parseResponse(res);
+};
+
+export const updateDeliveryTrip = async (tripId, payload) => {
+  const res = await fetch(`${apiBase}/api/delivery-trips/${tripId}`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+
+  return parseResponse(res);
+};

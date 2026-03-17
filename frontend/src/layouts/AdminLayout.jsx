@@ -14,6 +14,9 @@ const AdminLayout = () => {
     if (path.includes("/stock") && location.pathname.includes("/stock")) {
       return location.pathname.startsWith(basePath + "/stock");
     }
+    if (path.includes("/delivery") && location.pathname.includes("/delivery")) {
+      return location.pathname.startsWith(basePath + "/delivery");
+    }
     return location.pathname.startsWith(path + "/");
   };
 
@@ -27,6 +30,7 @@ const AdminLayout = () => {
     { path: `${basePath}/materials/add`, label: "Add Material", icon: "plus", show: true },
     { path: `${basePath}/materials`, label: "Manage Materials", icon: "box", show: true },
     { path: `${basePath}/orders`, label: "Orders", icon: "clipboard", show: true },
+    { path: `${basePath}/delivery`, label: "Delivery", icon: "truck", show: true },
     { path: `${basePath}/stock`, label: "Stock Control", icon: "chart", show: true },
   ].filter(item => item.show);
 
@@ -68,13 +72,19 @@ const AdminLayout = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 20V10m5 10V4m5 16v-6" />
           </svg>
         );
+      case "truck":
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 17h8m-8 0a2 2 0 11-4 0m4 0a2 2 0 104 0m4 0a2 2 0 104 0m-4 0h-4m4 0V9a1 1 0 00-1-1h-3m0 0V6a1 1 0 00-1-1H3a1 1 0 00-1 1v11h2m10-9h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 01.293.707V17h-2" />
+          </svg>
+        );
       default:
         return null;
     }
   };
 
   return (
-    <div className="min-h-screen bg-stone-100 flex">
+    <div className="min-h-screen bg-stone-100 flex overflow-x-hidden">
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-stone-200 flex flex-col fixed h-full">
         <div className="p-6">
@@ -136,8 +146,8 @@ const AdminLayout = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 ml-64">
-        <div className="p-8">
+      <main className="flex-1 ml-64 min-w-0 overflow-x-hidden">
+        <div className="p-8 max-w-full overflow-x-hidden">
           <Outlet />
         </div>
       </main>

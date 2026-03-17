@@ -23,6 +23,11 @@ const actions = [
     desc: "Record production, manual adjustments, and review stock history.",
     path: "/manager/stock",
   },
+  {
+    title: "Delivery",
+    desc: "Create truck trips and update dispatch or delivery progress.",
+    path: "/manager/delivery",
+  },
 ];
 
 const ManagerDashboard = () => {

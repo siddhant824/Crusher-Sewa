@@ -1,21 +1,11 @@
 import Material from "../models/Material.js";
 import Order from "../models/Order.js";
 import { applyStockChange } from "../services/stockService.js";
-
-const populateOrderQuery = [
-  {
-    path: "contractor",
-    select: "name email",
-  },
-  {
-    path: "approvedBy",
-    select: "name email role",
-  },
-  {
-    path: "items.material",
-    select: "name unit stock imageUrl ratePerCuMetre",
-  },
-];
+import {
+  attachDeliveryTripsToOrders,
+  populateOrderWithDeliveriesQuery,
+  refreshOrderDeliveryStatus,
+} from "../services/deliveryService.js";
 
 export const createOrder = async (req, res) => {
   const { items } = req.body;
@@ -80,10 +70,11 @@ export const createOrder = async (req, res) => {
       totalAmount,
     });
 
-    const populatedOrder = await Order.findById(order._id).populate(populateOrderQuery);
+    const populatedOrder = await Order.findById(order._id).populate(populateOrderWithDeliveriesQuery);
+    const orderWithTrips = await attachDeliveryTripsToOrders(populatedOrder);
 
     return res.status(201).json({
-      order: populatedOrder,
+      order: orderWithTrips,
       message: "Order placed successfully and is awaiting approval",
     });
   } catch (err) {
@@ -97,10 +88,12 @@ export const createOrder = async (req, res) => {
 export const getMyOrders = async (req, res) => {
   try {
     const orders = await Order.find({ contractor: req.user._id })
-      .populate(populateOrderQuery)
+      .populate(populateOrderWithDeliveriesQuery)
       .sort({ createdAt: -1 });
 
-    return res.json({ orders });
+    const ordersWithTrips = await attachDeliveryTripsToOrders(orders);
+
+    return res.json({ orders: ordersWithTrips });
   } catch (err) {
     return res.status(500).json({
       message: "Failed to fetch your orders",
@@ -112,10 +105,12 @@ export const getMyOrders = async (req, res) => {
 export const getAllOrders = async (_req, res) => {
   try {
     const orders = await Order.find()
-      .populate(populateOrderQuery)
+      .populate(populateOrderWithDeliveriesQuery)
       .sort({ createdAt: -1 });
 
-    return res.json({ orders });
+    const ordersWithTrips = await attachDeliveryTripsToOrders(orders);
+
+    return res.json({ orders: ordersWithTrips });
   } catch (err) {
     return res.status(500).json({
       message: "Failed to fetch orders",
@@ -178,11 +173,13 @@ export const updateOrderStatus = async (req, res) => {
     order.approvedBy = req.user._id;
     order.approvedAt = new Date();
     await order.save();
+    await refreshOrderDeliveryStatus(order._id);
 
-    const populatedOrder = await Order.findById(order._id).populate(populateOrderQuery);
+    const populatedOrder = await Order.findById(order._id).populate(populateOrderWithDeliveriesQuery);
+    const orderWithTrips = await attachDeliveryTripsToOrders(populatedOrder);
 
     return res.json({
-      order: populatedOrder,
+      order: orderWithTrips,
       message: `Order ${orderStatus.toLowerCase()} successfully`,
     });
   } catch (err) {

@@ -25,9 +25,7 @@ const AdminLayout = () => {
 
   const navItems = [
     { path: `${basePath}/dashboard`, label: "Dashboard", icon: "grid", show: true },
-    { path: `${basePath}/users/create`, label: "Create User", icon: "plus", show: isAdmin },
     { path: `${basePath}/users`, label: "Manage Users", icon: "users", show: isAdmin },
-    { path: `${basePath}/materials/add`, label: "Add Material", icon: "plus", show: true },
     { path: `${basePath}/materials`, label: "Manage Materials", icon: "box", show: true },
     { path: `${basePath}/orders`, label: "Orders", icon: "clipboard", show: true },
     { path: `${basePath}/delivery`, label: "Delivery", icon: "truck", show: true },

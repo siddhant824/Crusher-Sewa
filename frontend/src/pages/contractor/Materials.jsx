@@ -72,9 +72,19 @@ const Materials = () => {
   }, [selectedItems]);
 
   const handleQuantityChange = (materialId, value) => {
+    if (value === "") {
+      setQuantities((current) => ({
+        ...current,
+        [materialId]: value,
+      }));
+      return;
+    }
+
+    const nextValue = Math.max(Number(value), 1);
+
     setQuantities((current) => ({
       ...current,
-      [materialId]: value,
+      [materialId]: String(nextValue),
     }));
   };
 
@@ -109,12 +119,13 @@ const Materials = () => {
 
     const enteredQuantity = Number(quantities[material._id] || 0);
     const nextQuantity = enteredQuantity > 0 ? String(enteredQuantity) : "1";
+    const unitLabel = material.unit || "cubic metre";
 
     setQuantities((current) => ({
       ...current,
       [material._id]: nextQuantity,
     }));
-    toast.success(`${material.name} added with quantity ${nextQuantity}`);
+    toast.success(`${material.name} added with ${nextQuantity} ${unitLabel}`);
   };
 
   if (loading) {
@@ -194,7 +205,9 @@ const Materials = () => {
                   <h3 className="font-semibold text-stone-900 mb-1">{material.name}</h3>
                   <p className="text-sm text-stone-500 mb-2">Per {material.unit}</p>
                   {material.stock !== undefined && material.stock !== null && (
-                    <p className="text-xs text-stone-400 mb-4">Stock: {material.stock}</p>
+                    <p className="text-xs text-stone-400 mb-4">
+                      Stock: {material.stock} {material.unit || "cubic metre"}
+                    </p>
                   )}
 
                   <div className="flex items-center justify-between mt-4">
@@ -203,16 +216,23 @@ const Materials = () => {
                     </span>
                   </div>
                   <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      disabled={!available}
-                      value={selectedQuantity}
-                      onChange={(e) => handleQuantityChange(material._id, e.target.value)}
-                      placeholder="Qty"
-                      className="px-3 py-2 text-sm border border-stone-300 rounded-lg disabled:bg-stone-100"
-                    />
+                    <div className="border border-stone-300 rounded-lg bg-white disabled:bg-stone-100">
+                      <div className="flex items-center justify-between gap-2 px-3 py-2">
+                        <input
+                          type="number"
+                          min="1"
+                          step="0.01"
+                          disabled={!available}
+                          value={selectedQuantity}
+                          onChange={(e) => handleQuantityChange(material._id, e.target.value)}
+                          placeholder="Qty"
+                          className="w-full text-sm border-0 p-0 focus:ring-0 disabled:bg-stone-100 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                        />
+                        <span className="text-xs text-stone-400 whitespace-nowrap">
+                          cubic metre
+                        </span>
+                      </div>
+                    </div>
                     <button
                       type="button"
                       disabled={!available}

@@ -144,11 +144,30 @@ const Materials = () => {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-stone-900">Materials</h1>
-        <p className="text-stone-500 mt-1">
-          Browse available construction materials
-        </p>
+      <div className="mb-8 rounded-[28px] border border-stone-200 bg-[linear-gradient(135deg,#f0fdfa_0%,#ffffff_55%,#f8fafc_100%)] p-6 shadow-sm">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <span className="inline-flex rounded-full border border-teal-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
+              Material Booking
+            </span>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-stone-900">
+              Browse materials and prepare your next order
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-stone-600 sm:text-base">
+              Check live stock, choose the quantity you need, and build a clean order request before sending it for approval.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-wide text-stone-400">Available Materials</p>
+              <p className="mt-2 text-2xl font-semibold text-stone-900">{materials.length}</p>
+            </div>
+            <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-wide text-stone-400">Draft Items</p>
+              <p className="mt-2 text-2xl font-semibold text-stone-900">{selectedItems.length}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {materials.length === 0 ? (
@@ -160,7 +179,7 @@ const Materials = () => {
           <p className="text-sm text-stone-400 mt-1">Check back later for updates</p>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {materials.map((material) => {
             const available = material.stock === undefined || material.stock > 0;
             const selectedQuantity = quantities[material._id] || "";
@@ -173,27 +192,27 @@ const Materials = () => {
             return (
               <div
                 key={material._id}
-                className={`bg-white border rounded-xl overflow-hidden transition-all ${
+                className={`group overflow-hidden rounded-[24px] border bg-white transition-all ${
                   available
-                    ? "border-stone-200 hover:border-teal-300 hover:shadow-sm"
+                    ? "border-stone-200 shadow-sm hover:-translate-y-1 hover:border-teal-300 hover:shadow-lg hover:shadow-teal-900/5"
                     : "border-stone-100 opacity-60"
                 }`}
               >
                 {imageUrl && (
-                  <div className="w-full h-48 bg-stone-100">
+                  <div className="h-52 w-full overflow-hidden bg-stone-100">
                     <img src={imageUrl} alt={material.name} className="w-full h-full object-cover" />
                   </div>
                 )}
                 <div className="p-5">
-                  <div className="flex items-start justify-between mb-3">
+                  <div className="mb-4 flex items-start justify-between gap-3">
                     {!imageUrl && (
-                      <div className="w-10 h-10 bg-stone-100 rounded-lg flex items-center justify-center">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-stone-100">
                         <svg className="w-5 h-5 text-stone-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                         </svg>
                       </div>
                     )}
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                       available
                         ? "bg-teal-50 text-teal-700"
                         : "bg-stone-100 text-stone-500"
@@ -202,33 +221,40 @@ const Materials = () => {
                     </span>
                   </div>
 
-                  <h3 className="font-semibold text-stone-900 mb-1">{material.name}</h3>
-                  <p className="text-sm text-stone-500 mb-2">Per {material.unit}</p>
+                  <h3 className="text-lg font-semibold text-stone-900">{material.name}</h3>
+                  <p className="mt-1 text-sm text-stone-500">Per {material.unit}</p>
                   {material.stock !== undefined && material.stock !== null && (
-                    <p className="text-xs text-stone-400 mb-4">
+                    <p className="mt-3 text-sm text-stone-500">
                       Stock: {material.stock} {material.unit || "cubic metre"}
                     </p>
                   )}
 
-                  <div className="flex items-center justify-between mt-4">
-                    <span className="text-lg font-semibold text-stone-900">
-                      Rs. {material.ratePerCuMetre?.toFixed(2)}
-                    </span>
+                  <div className="mt-5 flex items-center justify-between rounded-2xl bg-stone-50 px-4 py-3">
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wide text-stone-400">Rate</p>
+                      <span className="mt-1 block text-2xl font-semibold tracking-tight text-stone-900">
+                        Rs. {material.ratePerCuMetre?.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-medium uppercase tracking-wide text-stone-400">Unit</p>
+                      <p className="mt-1 text-sm font-medium text-stone-700">{material.unit}</p>
+                    </div>
                   </div>
-                  <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
-                    <div className="border border-stone-300 rounded-lg bg-white disabled:bg-stone-100">
-                      <div className="flex items-center justify-between gap-2 px-3 py-2">
+
+                  <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                    <div className="rounded-2xl border border-stone-300 bg-white transition-colors group-hover:border-teal-200">
+                      <div className="flex items-center justify-between gap-2 px-3 py-3">
                         <input
-                          type="number"
-                          min="1"
-                          step="0.01"
+                          type="text"
+                          inputMode="decimal"
                           disabled={!available}
                           value={selectedQuantity}
                           onChange={(e) => handleQuantityChange(material._id, e.target.value)}
                           placeholder="Qty"
-                          className="w-full text-sm border-0 p-0 focus:ring-0 disabled:bg-stone-100 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                          className="w-full bg-transparent p-0 text-sm text-stone-900 border-0 focus:ring-0 disabled:bg-transparent [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                         />
-                        <span className="text-xs text-stone-400 whitespace-nowrap">
+                        <span className="whitespace-nowrap text-xs text-stone-400">
                           cubic metre
                         </span>
                       </div>
@@ -237,10 +263,10 @@ const Materials = () => {
                       type="button"
                       disabled={!available}
                       onClick={() => handleQuickAdd(material)}
-                      className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      className={`rounded-2xl px-4 py-3 text-sm font-semibold transition-colors ${
                         available
                           ? "bg-teal-600 text-white hover:bg-teal-700"
-                          : "bg-stone-100 text-stone-400 cursor-not-allowed"
+                          : "cursor-not-allowed bg-stone-100 text-stone-400"
                       }`}
                     >
                       Quick Add
@@ -253,32 +279,34 @@ const Materials = () => {
         </div>
       )}
 
-      <div className="mt-8 bg-white border border-stone-200 rounded-xl p-5">
-        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
-          <div className="flex-1">
-            <h2 className="text-lg font-semibold text-stone-900">Order Summary</h2>
-            <p className="text-sm text-stone-500 mt-1">
-              Select one or more materials, then place a single order request for approval.
+      <div className="mt-8 rounded-[28px] border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-xl font-semibold tracking-tight text-stone-900">Order Summary</h2>
+            <p className="mt-1 text-sm leading-6 text-stone-500">
+              Review selected materials before sending the order for approval.
             </p>
 
             {selectedItems.length === 0 ? (
-              <p className="text-sm text-stone-400 mt-4">
-                No materials selected yet.
-              </p>
+              <div className="mt-4 rounded-2xl border border-dashed border-stone-200 bg-stone-50 px-4 py-8 text-center">
+                <p className="text-sm text-stone-400">
+                  No materials selected yet.
+                </p>
+              </div>
             ) : (
-              <div className="mt-4 space-y-3">
+              <div className="mt-5 space-y-3">
                 {selectedItems.map((item) => (
                   <div
                     key={item.materialId}
-                    className="flex items-center justify-between gap-4 border border-stone-100 rounded-lg p-3"
+                    className="flex flex-col gap-3 rounded-2xl border border-stone-200 p-4 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-medium text-stone-900">{item.material.name}</p>
-                      <p className="text-sm text-stone-500">
+                      <p className="mt-1 text-sm text-stone-500">
                         {item.quantity} {item.material.unit} x Rs. {item.material.ratePerCuMetre.toFixed(2)}
                       </p>
                     </div>
-                    <p className="font-medium text-stone-900">
+                    <p className="text-lg font-semibold text-stone-900">
                       Rs. {item.subtotal.toFixed(2)}
                     </p>
                   </div>
@@ -287,20 +315,20 @@ const Materials = () => {
             )}
           </div>
 
-          <div className="w-full lg:w-72 bg-stone-50 border border-stone-200 rounded-xl p-4">
-            <p className="text-sm text-stone-500">Selected Items</p>
-            <p className="text-2xl font-semibold text-stone-900 mt-1">
+          <div className="w-full rounded-[24px] border border-stone-200 bg-stone-50 p-5 xl:w-80">
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-400">Selected Items</p>
+            <p className="mt-2 text-3xl font-semibold tracking-tight text-stone-900">
               {selectedItems.length}
             </p>
-            <p className="text-sm text-stone-500 mt-4">Estimated Total</p>
-            <p className="text-2xl font-semibold text-stone-900 mt-1">
+            <p className="mt-5 text-xs font-medium uppercase tracking-[0.18em] text-stone-400">Estimated Total</p>
+            <p className="mt-2 text-3xl font-semibold tracking-tight text-stone-900">
               Rs. {orderTotal.toFixed(2)}
             </p>
             <button
               type="button"
               disabled={placingOrder || selectedItems.length === 0}
               onClick={handlePlaceOrder}
-              className="w-full mt-5 px-4 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="mt-6 w-full rounded-2xl bg-teal-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {placingOrder ? "Placing Order..." : "Place Order"}
             </button>

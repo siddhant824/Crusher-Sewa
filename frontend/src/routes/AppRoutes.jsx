@@ -14,6 +14,8 @@ import ManagerDashboard from "../pages/ManagerDashboard.jsx";
 import OrdersManagement from "../pages/OrdersManagement.jsx";
 import StockControl from "../pages/StockControl.jsx";
 import DeliveryManagement from "../pages/DeliveryManagement.jsx";
+import TrucksManagement from "../pages/TrucksManagement.jsx";
+import AddTruck from "../pages/AddTruck.jsx";
 import Materials from "../pages/contractor/Materials.jsx";
 import Orders from "../pages/contractor/Orders.jsx";
 import Profile from "../pages/contractor/Profile.jsx";
@@ -49,6 +51,8 @@ const AppRoutes = () => (
       <Route path="/admin/materials" element={<ManageMaterials />} />
       <Route path="/admin/orders" element={<OrdersManagement />} />
       <Route path="/admin/delivery" element={<DeliveryManagement />} />
+      <Route path="/admin/trucks" element={<TrucksManagement />} />
+      <Route path="/admin/trucks/add" element={<AddTruck />} />
       <Route path="/admin/stock" element={<StockControl />} />
     </Route>
     <Route
@@ -71,6 +75,8 @@ const AppRoutes = () => (
       <Route path="/manager/materials" element={<ManageMaterials />} />
       <Route path="/manager/orders" element={<OrdersManagement />} />
       <Route path="/manager/delivery" element={<DeliveryManagement />} />
+      <Route path="/manager/trucks" element={<TrucksManagement />} />
+      <Route path="/manager/trucks/add" element={<AddTruck />} />
       <Route path="/manager/stock" element={<StockControl />} />
     </Route>
     <Route

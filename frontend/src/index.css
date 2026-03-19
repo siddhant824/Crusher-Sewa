@@ -57,6 +57,18 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
 }
 
+/* Remove number input spinner controls globally */
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 /* Button transitions */
 button {
   transition: all 0.15s ease;

@@ -14,67 +14,83 @@ const ContractorLayout = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-stone-50">
-      <header className="bg-white border-b border-stone-200 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-8">
-              <Link to="/contractor/materials" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">CS</span>
+    <div className="min-h-screen bg-[linear-gradient(180deg,#f7faf9_0%,#f5f5f4_28%,#fafaf9_100%)]">
+      <header className="sticky top-0 z-50 border-b border-stone-200/80 bg-white/90 backdrop-blur">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="flex min-h-[72px] flex-col justify-center gap-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:py-0">
+            <div className="flex items-center justify-between gap-4">
+              <Link to="/contractor/materials" className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-600 shadow-sm shadow-teal-900/10">
+                  <span className="text-sm font-bold text-white">CS</span>
                 </div>
-                <span className="text-lg font-semibold text-stone-800">
-                  Crusher Sewa
-                </span>
+                <div>
+                  <span className="block text-lg font-semibold tracking-tight text-stone-900">
+                    Crusher Sewa
+                  </span>
+                  <span className="block text-xs text-stone-500">
+                    Contractor Portal
+                  </span>
+                </div>
               </Link>
 
-              <nav className="hidden sm:flex items-center gap-1">
+              <button
+                onClick={logout}
+                className="rounded-xl border border-stone-200 px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:border-stone-300 hover:bg-stone-50 sm:hidden"
+              >
+                Logout
+              </button>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <nav className="hidden items-center gap-1 rounded-2xl border border-stone-200 bg-stone-50/80 p-1 sm:flex">
                 {navItems.map((item) => (
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    className={`rounded-xl px-4 py-2 text-sm font-medium transition-all ${
                       isActive(item.path)
-                        ? "bg-teal-50 text-teal-700"
-                        : "text-stone-600 hover:text-stone-900 hover:bg-stone-50"
+                        ? "bg-white text-teal-700 shadow-sm ring-1 ring-stone-200"
+                        : "text-stone-600 hover:bg-white hover:text-stone-900"
                     }`}
                   >
                     {item.label}
                   </Link>
                 ))}
               </nav>
-            </div>
 
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-stone-100 rounded-lg">
-                <div className="w-6 h-6 bg-teal-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs font-medium">
-                    {user?.name?.charAt(0) || "C"}
-                  </span>
+              <div className="hidden items-center gap-3 sm:flex">
+                <div className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-white px-3 py-2 shadow-sm">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-teal-100">
+                    <span className="text-sm font-semibold text-teal-700">
+                      {user?.name?.charAt(0) || "C"}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-stone-900">{user?.name}</p>
+                    <p className="truncate text-xs text-stone-500">{user?.email}</p>
+                  </div>
                 </div>
-                <span className="text-sm text-stone-700">{user?.name}</span>
+                <button
+                  onClick={logout}
+                  className="rounded-xl border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 transition-colors hover:border-stone-300 hover:bg-stone-50 hover:text-stone-900"
+                >
+                  Logout
+                </button>
               </div>
-              <button
-                onClick={logout}
-                className="px-4 py-2 text-sm text-stone-600 hover:text-stone-900 font-medium"
-              >
-                Logout
-              </button>
             </div>
           </div>
         </div>
 
-        {/* Mobile nav */}
-        <div className="sm:hidden border-t border-stone-200">
-          <div className="flex">
+        <div className="border-t border-stone-200 sm:hidden">
+          <div className="mx-auto flex max-w-7xl px-2">
             {navItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex-1 py-3 text-center text-sm font-medium transition-colors ${
+                className={`flex-1 border-b-2 px-2 py-3 text-center text-sm font-medium transition-colors ${
                   isActive(item.path)
-                    ? "text-teal-600 border-b-2 border-teal-600"
-                    : "text-stone-600"
+                    ? "border-teal-600 text-teal-700"
+                    : "border-transparent text-stone-500"
                 }`}
               >
                 {item.label}
@@ -84,8 +100,10 @@ const ContractorLayout = () => {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-8">
-        <Outlet />
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+        <div className="rounded-[28px] border border-white/70 bg-white/70 p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02),0_18px_45px_rgba(15,23,42,0.04)] backdrop-blur sm:p-6">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

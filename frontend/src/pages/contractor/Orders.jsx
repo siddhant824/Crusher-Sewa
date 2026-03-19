@@ -137,15 +137,38 @@ const Orders = () => {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-stone-900">My Orders</h1>
-        <p className="text-stone-500 mt-1">
-          Track your orders and delivery status
-        </p>
+      <div className="mb-8 rounded-[28px] border border-stone-200 bg-[linear-gradient(135deg,#fff7ed_0%,#ffffff_45%,#eff6ff_100%)] p-6 shadow-sm">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <span className="inline-flex rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-stone-600">
+              Order Tracking
+            </span>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-stone-900">Manage draft orders and track deliveries</h1>
+            <p className="mt-2 text-sm leading-6 text-stone-600 sm:text-base">
+              Keep an eye on approvals, delivery progress, and payment status from one clean place.
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-wide text-stone-400">Draft</p>
+              <p className="mt-2 text-2xl font-semibold text-stone-900">{draftItems.length}</p>
+            </div>
+            <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-wide text-stone-400">Orders</p>
+              <p className="mt-2 text-2xl font-semibold text-stone-900">{orders.length}</p>
+            </div>
+            <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-wide text-stone-400">Pending</p>
+              <p className="mt-2 text-2xl font-semibold text-stone-900">
+                {orders.filter((order) => order.orderStatus === "PENDING").length}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {draftItems.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 mb-6">
+        <div className="mb-6 rounded-[24px] border border-amber-200 bg-[linear-gradient(135deg,#fffbeb_0%,#fff7ed_100%)] p-5 shadow-sm">
           <div className="flex items-start justify-between gap-4 mb-4">
             <div>
               <h2 className="text-lg font-semibold text-amber-900">Draft Order</h2>
@@ -162,7 +185,7 @@ const Orders = () => {
             {draftItems.map((item) => (
               <div
                 key={`draft-${item.materialId}`}
-                className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 bg-white border border-amber-100 rounded-lg p-3"
+                className="flex flex-col gap-4 rounded-2xl border border-amber-100 bg-white p-4 lg:flex-row lg:items-center lg:justify-between"
               >
                 <div>
                   <p className="font-medium text-stone-900">{item.name}</p>
@@ -171,26 +194,25 @@ const Orders = () => {
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 rounded-2xl border border-stone-200 bg-stone-50 px-2 py-2">
                     <button
                       type="button"
                       onClick={() => changeDraftQuantity(item.materialId, -1)}
-                      className="w-9 h-9 rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-50"
+                      className="flex h-8 w-8 items-center justify-center rounded-xl border border-stone-200 bg-white text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-100"
                     >
                       -
                     </button>
                     <input
-                      type="number"
-                      min="0"
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
                       value={item.quantity}
                       onChange={(e) => handleDraftQuantityChange(item.materialId, e.target.value)}
-                      className="w-24 px-3 py-2 text-sm border border-stone-300 rounded-lg"
+                      className="w-16 rounded-xl border border-stone-200 bg-white px-2 py-1.5 text-center text-sm font-medium text-stone-900 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                     <button
                       type="button"
                       onClick={() => changeDraftQuantity(item.materialId, 1)}
-                      className="w-9 h-9 rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-50"
+                      className="flex h-8 w-8 items-center justify-center rounded-xl border border-stone-200 bg-white text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-100"
                     >
                       +
                     </button>
@@ -214,7 +236,7 @@ const Orders = () => {
               type="button"
               onClick={handleConfirmDraft}
               disabled={confirmingDraft}
-              className="px-5 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="rounded-2xl bg-teal-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {confirmingDraft ? "Confirming..." : "Confirm Order"}
             </button>
@@ -235,9 +257,9 @@ const Orders = () => {
           </p>
         </div>
       ) : orders.length > 0 ? (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {orders.map((order) => (
-            <div key={order._id} className="bg-white border border-stone-200 rounded-xl p-5">
+            <div key={order._id} className="rounded-[24px] border border-stone-200 bg-white p-5 shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
                 <div>
                   <p className="text-xs text-stone-400">
@@ -264,7 +286,7 @@ const Orders = () => {
                 {order.items.map((item) => (
                   <div
                     key={`${order._id}-${item.material?._id || item.materialName}`}
-                    className="flex items-center justify-between gap-4 border border-stone-100 rounded-lg p-3"
+                    className="flex items-center justify-between gap-4 rounded-2xl border border-stone-100 p-4"
                   >
                     <div>
                       <p className="font-medium text-stone-900">{item.materialName}</p>
@@ -286,7 +308,7 @@ const Orders = () => {
                     {order.deliveryTrips.map((trip) => (
                       <div
                         key={trip._id}
-                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-stone-100 rounded-lg p-3"
+                        className="flex flex-col gap-3 rounded-2xl border border-stone-100 p-4 sm:flex-row sm:items-center sm:justify-between"
                       >
                         <div>
                           <p className="font-medium text-stone-900">Trip #{trip.tripNumber}</p>
@@ -321,7 +343,7 @@ const Orders = () => {
       ) : null}
 
       {/* Order Status Guide */}
-      <div className="mt-8">
+      <div className="mt-8 rounded-[24px] border border-stone-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-stone-900 mb-4">Order Status Guide</h2>
         <div className="grid sm:grid-cols-4 gap-4">
           {[
@@ -330,7 +352,7 @@ const Orders = () => {
             { status: "In Transit", color: "bg-violet-500", desc: "Materials on the way to your site" },
             { status: "Delivered", color: "bg-teal-500", desc: "Order delivered successfully" },
           ].map((item) => (
-            <div key={item.status} className="bg-white border border-stone-200 rounded-xl p-4">
+            <div key={item.status} className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
               <div className="flex items-center gap-2 mb-2">
                 <span className={`w-2.5 h-2.5 rounded-full ${item.color}`}></span>
                 <span className="font-medium text-stone-900 text-sm">{item.status}</span>

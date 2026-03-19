@@ -98,14 +98,14 @@ const AddMaterial = () => {
   };
 
   return (
-    <div className="max-w-2xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-stone-900">Add Material</h1>
-        <p className="text-stone-500 mt-1">Create a new construction material</p>
+    <div className="mx-auto max-w-2xl py-6">
+      <div className="mb-6 text-center">
+        <h1 className="text-3xl font-semibold tracking-tight text-stone-900">Add Material</h1>
+        <p className="mt-2 text-sm text-stone-500">Create a new construction material for the system.</p>
       </div>
 
-      <div className="bg-white border border-stone-200 rounded-xl p-6">
-        <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Material Name */}
           <div>
             <label className="block text-sm font-medium text-stone-700 mb-2">
@@ -117,7 +117,7 @@ const AddMaterial = () => {
               value={formData.name}
               onChange={handleChange}
               placeholder="e.g., River Sand"
-              className="w-full px-4 py-2.5 border border-stone-300 rounded-lg text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              className="w-full rounded-xl border border-stone-300 px-4 py-3 text-stone-900 placeholder-stone-400"
               required
             />
           </div>
@@ -128,48 +128,48 @@ const AddMaterial = () => {
               Rate Per Cubic Metre (Rs.) <span className="text-red-500">*</span>
             </label>
             <input
-              type="number"
+              type="text"
+              inputMode="decimal"
               name="ratePerCuMetre"
               value={formData.ratePerCuMetre}
               onChange={handleChange}
               placeholder="0.00"
-              step="0.01"
-              min="0"
-              className="w-full px-4 py-2.5 border border-stone-300 rounded-lg text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              className="w-full rounded-xl border border-stone-300 px-4 py-3 text-stone-900 placeholder-stone-400"
               required
             />
           </div>
 
-          {/* Unit */}
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-2">
-              Unit
-            </label>
-            <input
-              type="text"
-              name="unit"
-              value={formData.unit}
-              onChange={handleChange}
-              placeholder="cubic metre"
-              className="w-full px-4 py-2.5 border border-stone-300 rounded-lg text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-            />
-          </div>
+          <div className="grid gap-5 sm:grid-cols-2">
+            {/* Unit */}
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-2">
+                Unit
+              </label>
+              <input
+                type="text"
+                name="unit"
+                value={formData.unit}
+                onChange={handleChange}
+                placeholder="cubic metre"
+                className="w-full rounded-xl border border-stone-300 px-4 py-3 text-stone-900 placeholder-stone-400"
+              />
+            </div>
 
-          {/* Stock */}
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-2">
-              Stock (Optional)
-            </label>
-            <input
-              type="number"
-              name="stock"
-              value={formData.stock}
-              onChange={handleChange}
-              placeholder="0"
-              step="0.01"
-              min="0"
-              className="w-full px-4 py-2.5 border border-stone-300 rounded-lg text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-            />
+            {/* Stock */}
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-2">
+                Stock (Optional)
+              </label>
+              <input
+                type="text"
+                inputMode="decimal"
+                name="stock"
+                value={formData.stock}
+                onChange={handleChange}
+                placeholder="0"
+                className="w-full rounded-xl border border-stone-300 px-4 py-3 text-stone-900 placeholder-stone-400"
+              />
+            </div>
           </div>
 
           {/* Image Upload */}
@@ -177,9 +177,9 @@ const AddMaterial = () => {
             <label className="block text-sm font-medium text-stone-700 mb-2">
               Material Image (Optional)
             </label>
-            <div className="space-y-3">
-              <div className="flex items-center gap-4">
-                <label className="flex items-center justify-center px-4 py-2.5 border-2 border-dashed border-stone-300 rounded-lg cursor-pointer hover:border-teal-500 hover:bg-teal-50 transition-colors">
+            <div className="space-y-4 rounded-2xl border border-dashed border-stone-300 bg-stone-50 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <label className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-stone-300 bg-white px-4 py-3 transition-colors hover:border-teal-500 hover:bg-teal-50">
                   <input
                     type="file"
                     accept="image/jpeg,image/jpg,image/png,image/webp"
@@ -206,7 +206,7 @@ const AddMaterial = () => {
                   </div>
                 </label>
                 {imageFile && (
-                  <span className="text-sm text-stone-600">
+                  <span className="text-sm text-stone-600 break-all">
                     {imageFile.name} ({(imageFile.size / 1024).toFixed(2)} KB)
                   </span>
                 )}
@@ -215,11 +215,11 @@ const AddMaterial = () => {
                 Accepted formats: JPG, PNG, WEBP. Max size: 2MB
               </p>
               {imagePreview && (
-                <div className="mt-3">
+                <div>
                   <p className="text-sm font-medium text-stone-700 mb-2">
                     Preview:
                   </p>
-                  <div className="w-full max-w-xs border border-stone-200 rounded-lg overflow-hidden">
+                  <div className="w-full max-w-xs overflow-hidden rounded-xl border border-stone-200 bg-white">
                     <img
                       src={imagePreview}
                       alt="Preview"
@@ -232,20 +232,20 @@ const AddMaterial = () => {
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3 pt-2">
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? "Creating..." : "Create Material"}
-            </button>
+          <div className="flex flex-col-reverse gap-3 border-t border-stone-200 pt-6 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={() => navigate(`${basePath}/materials`)}
-              className="px-6 py-2.5 border border-stone-300 text-stone-700 rounded-lg hover:bg-stone-50 font-medium transition-colors"
+              className="rounded-xl border border-stone-300 px-6 py-3 font-medium text-stone-700 transition-colors hover:bg-stone-50"
             >
               Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="rounded-xl bg-teal-600 px-6 py-3 font-medium text-white transition-colors hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? "Creating..." : "Create Material"}
             </button>
           </div>
         </form>

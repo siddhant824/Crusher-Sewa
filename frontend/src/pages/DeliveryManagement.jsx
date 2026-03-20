@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { createDeliveryTrip, getAllOrders, updateDeliveryTrip } from "../services/ordersApi.js";
-import { createTruck, getTrucks } from "../services/truckApi.js";
+import { getTrucks } from "../services/truckApi.js";
 
 const orderStatusStyles = {
   APPROVED: "bg-teal-50 text-teal-700 border-teal-200",
@@ -31,6 +31,14 @@ const defaultTripForm = {
   note: "",
 };
 
+const formatDateTime = (value) => {
+  if (!value) {
+    return "-";
+  }
+
+  return new Date(value).toLocaleString();
+};
+
 const DeliveryManagement = () => {
   const [orders, setOrders] = useState([]);
   const [trucks, setTrucks] = useState([]);
@@ -38,16 +46,12 @@ const DeliveryManagement = () => {
   const [actingId, setActingId] = useState(null);
   const [tripForms, setTripForms] = useState({});
   const [editingTripId, setEditingTripId] = useState(null);
+  const [selectedOrderId, setSelectedOrderId] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [deliveryFilter, setDeliveryFilter] = useState("ALL");
   const [editTripForm, setEditTripForm] = useState({
     deliveredQuantity: "",
     truckId: "",
-    note: "",
-  });
-  const [truckSubmitting, setTruckSubmitting] = useState(false);
-  const [truckForm, setTruckForm] = useState({
-    name: "",
-    plateNumber: "",
-    capacity: "",
     note: "",
   });
 
@@ -59,12 +63,13 @@ const DeliveryManagement = () => {
     setLoading(true);
     try {
       const [ordersData, trucksData] = await Promise.all([getAllOrders(), getTrucks()]);
-      const data = ordersData;
-      const approvedOrders = (data.orders || []).filter(
+      const approvedOrders = (ordersData.orders || []).filter(
         (order) => order.orderStatus === "APPROVED"
       );
+
       setOrders(approvedOrders);
       setTrucks(trucksData.trucks || []);
+      setSelectedOrderId((current) => current || approvedOrders[0]?._id || "");
     } catch (err) {
       toast.error(err.message || "Failed to load delivery data");
     } finally {
@@ -122,10 +127,12 @@ const DeliveryManagement = () => {
     new Set(
       orders.flatMap((order) =>
         (order.deliveryTrips || [])
-          .filter((trip) => trip.status !== "DELIVERED")
+          .filter((trip) => trip.status !== "DELIVERED" && trip.status !== "CANCELLED")
           .map((trip) => String(trip.truck?._id || trip.truck))
       )
     );
+
+  const getTripForm = (orderId) => tripForms[orderId] || defaultTripForm;
 
   const getSelectedTruck = (orderId) =>
     trucks.find((truck) => truck._id === getTripForm(orderId).truckId) || null;
@@ -136,22 +143,45 @@ const DeliveryManagement = () => {
 
     return trucks.filter(
       (truck) =>
-        !activeTruckIds.has(String(truck._id)) || String(truck._id) === String(effectiveSelectedTruckId)
+        !activeTruckIds.has(String(truck._id)) ||
+        String(truck._id) === String(effectiveSelectedTruckId)
     );
   };
 
-  const getBusyTruckTrips = () =>
-    orders.flatMap((order) =>
-      (order.deliveryTrips || [])
-        .filter((trip) => trip.status !== "DELIVERED" && trip.status !== "CANCELLED")
-        .map((trip) => ({
-          orderId: order._id,
-          contractorName: order.contractor?.name || "Contractor",
-          trip,
-        }))
-    );
+  const filteredOrders = useMemo(() => {
+    let nextOrders = [...orders];
 
-  const getTripForm = (orderId) => tripForms[orderId] || defaultTripForm;
+    if (deliveryFilter !== "ALL") {
+      nextOrders = nextOrders.filter((order) => order.deliveryStatus === deliveryFilter);
+    }
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      nextOrders = nextOrders.filter((order) => {
+        const contractorName = order.contractor?.name?.toLowerCase() || "";
+        const contractorEmail = order.contractor?.email?.toLowerCase() || "";
+
+        return contractorName.includes(query) || contractorEmail.includes(query);
+      });
+    }
+
+    return nextOrders;
+  }, [orders, deliveryFilter, searchQuery]);
+
+  useEffect(() => {
+    if (!filteredOrders.length) {
+      setSelectedOrderId("");
+      return;
+    }
+
+    const selectedStillVisible = filteredOrders.some((order) => order._id === selectedOrderId);
+    if (!selectedStillVisible) {
+      setSelectedOrderId(filteredOrders[0]._id);
+    }
+  }, [filteredOrders, selectedOrderId]);
+
+  const selectedOrder =
+    filteredOrders.find((order) => order._id === selectedOrderId) || filteredOrders[0] || null;
 
   const handleTripFormChange = (orderId, field, value) => {
     setTripForms((current) => ({
@@ -170,6 +200,7 @@ const DeliveryManagement = () => {
     const selectedItem = order?.items.find(
       (item) => getMaterialId(item) === String(form.materialId)
     );
+
     setActingId(orderId);
 
     if (!form.materialId || !form.truckId || !form.deliveredQuantity) {
@@ -214,6 +245,7 @@ const DeliveryManagement = () => {
         status: form.status,
         note: form.note,
       });
+
       toast.success(data.message || "Delivery trip created");
       updateOrderInState(data.order);
       setTripForms((current) => ({
@@ -251,6 +283,7 @@ const DeliveryManagement = () => {
 
   const handleSaveTripEdit = async (trip) => {
     setActingId(trip._id);
+
     const selectedTruck = trucks.find((truck) => truck._id === editTripForm.truckId);
     const order = orders.find((item) => item._id === trip.order);
     const orderItem = order?.items.find(
@@ -269,10 +302,9 @@ const DeliveryManagement = () => {
     }
 
     if (order && orderItem) {
-      const assignedWithoutCurrent = getAllocatedMaterialQuantity(
-        order,
-        trip.material?._id || trip.material
-      ) - Number(trip.deliveredQuantity);
+      const assignedWithoutCurrent =
+        getAllocatedMaterialQuantity(order, trip.material?._id || trip.material) -
+        Number(trip.deliveredQuantity);
       const maxAllowed = Number(orderItem.quantity) - assignedWithoutCurrent;
 
       if (requestedQuantity > maxAllowed) {
@@ -288,6 +320,7 @@ const DeliveryManagement = () => {
         truckId: editTripForm.truckId,
         note: editTripForm.note,
       });
+
       toast.success(data.message || "Trip updated successfully");
       updateOrderInState(data.order);
       setEditingTripId(null);
@@ -314,29 +347,6 @@ const DeliveryManagement = () => {
     }
   };
 
-  const handleCreateTruck = async (e) => {
-    e.preventDefault();
-    setTruckSubmitting(true);
-    try {
-      const data = await createTruck({
-        ...truckForm,
-        capacity: Number(truckForm.capacity || 0),
-      });
-      toast.success(data.message || "Truck created");
-      setTrucks((current) => [data.truck, ...current]);
-      setTruckForm({
-        name: "",
-        plateNumber: "",
-        capacity: "",
-        note: "",
-      });
-    } catch (err) {
-      toast.error(err.message || "Failed to create truck");
-    } finally {
-      setTruckSubmitting(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -346,371 +356,478 @@ const DeliveryManagement = () => {
   }
 
   return (
-    <div className="max-w-full overflow-x-hidden">
-      <div className="mb-6">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold text-stone-900">Delivery Management</h1>
-        <p className="text-stone-500 mt-1">
-          Manage truck trips for approved orders and track partial or full delivery progress.
+        <p className="text-stone-500">
+          Manage approved orders, assign truck trips, and track delivery progress from one clean workspace.
         </p>
-      </div>
-
-      <div className="bg-white border border-stone-200 rounded-xl p-6 mb-6 overflow-hidden">
-        <div className="grid grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)] gap-6 items-start">
-          <div className="min-w-0">
-            <h2 className="text-lg font-semibold text-stone-900">Truck Master</h2>
-            <p className="text-sm text-stone-500 mt-1">
-              Add all trucks that can be assigned to delivery rounds and repeated trips.
-            </p>
-            <form onSubmit={handleCreateTruck} className="space-y-3 mt-4">
-              <input
-                type="text"
-                value={truckForm.name}
-                onChange={(e) => setTruckForm((current) => ({ ...current, name: e.target.value }))}
-                placeholder="Truck name"
-                className="w-full px-3 py-2 border border-stone-300 rounded-lg"
-                required
-              />
-              <input
-                type="text"
-                value={truckForm.plateNumber}
-                onChange={(e) => setTruckForm((current) => ({ ...current, plateNumber: e.target.value }))}
-                placeholder="Plate number"
-                className="w-full px-3 py-2 border border-stone-300 rounded-lg"
-                required
-              />
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={truckForm.capacity}
-                onChange={(e) => setTruckForm((current) => ({ ...current, capacity: e.target.value }))}
-                placeholder="Capacity"
-                className="w-full px-3 py-2 border border-stone-300 rounded-lg"
-              />
-              <input
-                type="text"
-                value={truckForm.note}
-                onChange={(e) => setTruckForm((current) => ({ ...current, note: e.target.value }))}
-                placeholder="Optional note"
-                className="w-full px-3 py-2 border border-stone-300 rounded-lg"
-              />
-              <button
-                type="submit"
-                disabled={truckSubmitting}
-                className="w-full px-4 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
-              >
-                {truckSubmitting ? "Saving..." : "Add Truck"}
-              </button>
-            </form>
-          </div>
-
-          <div className="min-w-0">
-            <h3 className="font-medium text-stone-900 mb-3">Available Trucks</h3>
-            {trucks.length === 0 ? (
-              <p className="text-sm text-stone-400">No trucks added yet.</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3">
-                {trucks.map((truck) => {
-                  const busyTripInfo = getBusyTruckTrips().find(
-                    ({ trip }) => String(trip.truck?._id || trip.truck) === String(truck._id)
-                  );
-
-                  return (
-                    <div key={truck._id} className="border border-stone-100 rounded-lg p-4 min-w-0">
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="font-medium text-stone-900 break-words">{truck.name}</p>
-                        <span
-                          className={`inline-flex px-2 py-1 rounded-full text-xs font-medium shrink-0 ${
-                            busyTripInfo ? "bg-amber-50 text-amber-700" : "bg-teal-50 text-teal-700"
-                          }`}
-                        >
-                          {busyTripInfo ? "Busy" : "Available"}
-                        </span>
-                      </div>
-                      <p className="text-sm text-stone-500 mt-1 break-words">{truck.plateNumber}</p>
-                      <p className="text-sm text-stone-500 mt-1">
-                        Capacity: {truck.capacity || 0}
-                      </p>
-                      {busyTripInfo && (
-                        <p className="text-sm text-amber-700 mt-2 break-words">
-                          {truck.name} is on Trip #{busyTripInfo.trip.tripNumber} for {busyTripInfo.contractorName}
-                        </p>
-                      )}
-                      {truck.note && <p className="text-sm text-stone-600 mt-2 break-words">{truck.note}</p>}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white border border-stone-200 rounded-xl p-6 mb-6 overflow-hidden">
-        <h2 className="text-lg font-semibold text-stone-900">Busy Trucks</h2>
-        <p className="text-sm text-stone-500 mt-1">
-          Trucks below are already assigned to active trips and will reappear after those trips are delivered or cancelled.
-        </p>
-        <div className="mt-4 space-y-3">
-          {getBusyTruckTrips().length === 0 ? (
-            <p className="text-sm text-stone-400">No trucks are currently busy.</p>
-          ) : (
-            getBusyTruckTrips().map(({ trip, contractorName }) => (
-              <div key={trip._id} className="border border-stone-100 rounded-lg p-4 min-w-0">
-                <p className="font-medium text-stone-900">
-                  {trip.truck?.name} ({trip.truck?.plateNumber})
-                </p>
-                <p className="text-sm text-stone-500 mt-1 break-words">
-                  Busy on Trip #{trip.tripNumber} for {contractorName}
-                </p>
-                <p className="text-sm text-stone-500 mt-1 break-words">
-                  Material: {trip.materialName}, Status: {trip.status}
-                </p>
-              </div>
-            ))
-          )}
-        </div>
       </div>
 
       {orders.length === 0 ? (
-        <div className="bg-white border border-stone-200 rounded-xl p-12 text-center">
-          <p className="text-stone-600 font-medium">No approved orders ready for delivery</p>
-          <p className="text-sm text-stone-400 mt-1">
+        <div className="rounded-xl border border-stone-200 bg-white p-12 text-center">
+          <p className="font-medium text-stone-600">No approved orders ready for delivery</p>
+          <p className="mt-1 text-sm text-stone-400">
             Approve contractor orders first, then create truck trips here.
           </p>
         </div>
       ) : (
-        <div className="space-y-5">
-          {orders.map((order) => (
-            <div key={order._id} className="bg-white border border-stone-200 rounded-xl p-5 overflow-hidden">
-              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-4">
+        <>
+          <div className="rounded-xl border border-stone-200 bg-white p-4">
+            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-stone-500">
+                  Search Orders
+                </label>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by contractor name or email"
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-stone-500">
+                  Delivery Status
+                </label>
+                <select
+                  value={deliveryFilter}
+                  onChange={(e) => setDeliveryFilter(e.target.value)}
+                  className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900"
+                >
+                  <option value="ALL">All Status</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="PARTIALLY_DELIVERED">Partially Delivered</option>
+                  <option value="DELIVERED">Delivered</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-stone-200 bg-white">
+            {filteredOrders.length === 0 ? (
+              <div className="p-12 text-center">
+                <p className="font-medium text-stone-600">No matching delivery orders found</p>
+                <p className="mt-1 text-sm text-stone-400">Try adjusting the search or delivery filter.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[860px]">
+                  <thead className="bg-stone-50">
+                    <tr className="border-b border-stone-200">
+                      <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                        Contractor
+                      </th>
+                      <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                        Materials
+                      </th>
+                      <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                        Trips
+                      </th>
+                      <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                        Delivery Status
+                      </th>
+                      <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                        Approved At
+                      </th>
+                      <th className="px-5 py-3 text-right text-xs font-medium uppercase tracking-wide text-stone-500">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100">
+                    {filteredOrders.map((order) => (
+                      <tr
+                        key={order._id}
+                        className={selectedOrder?._id === order._id ? "bg-teal-50/40" : "hover:bg-stone-50"}
+                      >
+                        <td className="px-5 py-4">
+                          <p className="font-medium text-stone-900">{order.contractor?.name || "Contractor"}</p>
+                          <p className="mt-1 text-sm text-stone-500">{order.contractor?.email}</p>
+                        </td>
+                        <td className="px-5 py-4 text-sm text-stone-600">
+                          {order.items.length} material{order.items.length === 1 ? "" : "s"}
+                        </td>
+                        <td className="px-5 py-4 text-sm text-stone-600">
+                          {order.deliveryTrips?.length || 0} trip{order.deliveryTrips?.length === 1 ? "" : "s"}
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex flex-wrap gap-2">
+                            <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${orderStatusStyles[order.orderStatus] || orderStatusStyles.APPROVED}`}>
+                              {order.orderStatus}
+                            </span>
+                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${deliveryStyles[order.deliveryStatus] || deliveryStyles.PENDING}`}>
+                              {order.deliveryStatus}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 text-sm text-stone-600">
+                          {formatDateTime(order.approvedAt)}
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedOrderId(order._id)}
+                            className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                              selectedOrder?._id === order._id
+                                ? "bg-stone-900 text-white"
+                                : "border border-stone-300 text-stone-700 hover:bg-stone-50"
+                            }`}
+                          >
+                            {selectedOrder?._id === order._id ? "Selected" : "Manage"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {selectedOrder && (
+            <div className="space-y-6 rounded-xl border border-stone-200 bg-white p-5">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-stone-900">
-                    {order.contractor?.name || "Contractor"}
+                  <h2 className="text-xl font-semibold text-stone-900">
+                    {selectedOrder.contractor?.name || "Contractor"}
                   </h2>
-                  <p className="text-sm text-stone-500">{order.contractor?.email}</p>
-                  <p className="text-xs text-stone-400 mt-1">
-                    Approved on {order.approvedAt ? new Date(order.approvedAt).toLocaleString() : "N/A"}
+                  <p className="mt-1 text-sm text-stone-500">{selectedOrder.contractor?.email}</p>
+                  <p className="mt-1 text-sm text-stone-500">
+                    Approved on {formatDateTime(selectedOrder.approvedAt)}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <span className={`inline-flex px-2.5 py-1 rounded-full border text-xs font-medium ${orderStatusStyles[order.orderStatus] || orderStatusStyles.APPROVED}`}>
-                    {order.orderStatus}
+                  <span className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-medium ${orderStatusStyles[selectedOrder.orderStatus] || orderStatusStyles.APPROVED}`}>
+                    {selectedOrder.orderStatus}
                   </span>
-                  <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${deliveryStyles[order.deliveryStatus] || deliveryStyles.PENDING}`}>
-                    Delivery: {order.deliveryStatus}
+                  <span className={`inline-flex rounded-full px-3 py-1.5 text-xs font-medium ${deliveryStyles[selectedOrder.deliveryStatus] || deliveryStyles.PENDING}`}>
+                    Delivery: {selectedOrder.deliveryStatus}
                   </span>
                 </div>
               </div>
 
-              <div className="bg-stone-50 border border-stone-100 rounded-lg p-4 mb-4">
-                <p className="text-sm font-medium text-stone-900 mb-2">Ordered Materials</p>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                  {order.items.map((item) => {
-                    const progress = getMaterialProgress(order, item);
-
-                    return (
-                      <div key={`${order._id}-${item.materialName}`} className="border border-stone-200 rounded-lg bg-white p-4 min-w-0">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="font-medium text-stone-800 break-words">{item.materialName}</p>
-                            <p className="text-xs text-stone-500 mt-1">Material-wise delivery progress</p>
-                          </div>
-                          <span className="text-xs font-medium text-stone-500 shrink-0">
-                            {progress.progress.toFixed(0)}% delivered
-                          </span>
-                        </div>
-                        <div className="w-full h-2 bg-stone-100 rounded-full mt-3 overflow-hidden">
-                          <div
-                            className="h-full bg-teal-500 rounded-full"
-                            style={{ width: `${progress.progress}%` }}
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3 mt-4 text-sm">
-                          <div>
-                            <p className="text-stone-400">Ordered</p>
-                            <p className="font-medium text-stone-800">{progress.ordered} {item.unit}</p>
-                          </div>
-                          <div>
-                            <p className="text-stone-400">Assigned</p>
-                            <p className="font-medium text-stone-800">{progress.assigned} {item.unit}</p>
-                          </div>
-                          <div>
-                            <p className="text-stone-400">Delivered</p>
-                            <p className="font-medium text-stone-800">{progress.delivered} {item.unit}</p>
-                          </div>
-                          <div>
-                            <p className="text-stone-400">Remaining</p>
-                            <p className="font-medium text-stone-800">{progress.remaining.toFixed(2)} {item.unit}</p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <div className="flex items-center justify-between gap-4 mb-3">
-                  <h3 className="font-medium text-stone-900">Truck Trips</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-stone-900">Material Progress</h3>
                   <p className="text-sm text-stone-500">
-                    {order.deliveryTrips?.length || 0} trip{order.deliveryTrips?.length === 1 ? "" : "s"}
+                    {selectedOrder.items.length} material{selectedOrder.items.length === 1 ? "" : "s"}
                   </p>
                 </div>
+                <div className="overflow-x-auto rounded-xl border border-stone-200">
+                  <table className="w-full min-w-[760px]">
+                    <thead className="bg-stone-50">
+                      <tr className="border-b border-stone-200">
+                        <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                          Material
+                        </th>
+                        <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                          Ordered
+                        </th>
+                        <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                          Assigned
+                        </th>
+                        <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                          Delivered
+                        </th>
+                        <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                          Remaining
+                        </th>
+                        <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                          Progress
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100">
+                      {selectedOrder.items.map((item) => {
+                        const progress = getMaterialProgress(selectedOrder, item);
 
-                {order.deliveryTrips?.length > 0 ? (
-                  <div className="space-y-3">
-                    {order.deliveryTrips.map((trip) => (
-                      <div
-                        key={trip._id}
-                        className="border border-stone-100 rounded-lg p-4 flex flex-col gap-4 min-w-0"
-                      >
-                        {editingTripId === trip._id ? (
-                          <div className="w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                            <input
-                              type="number"
-                              min="0.01"
-                              step="0.01"
-                              value={editTripForm.deliveredQuantity}
-                              onChange={(e) => setEditTripForm((current) => ({ ...current, deliveredQuantity: e.target.value }))}
-                              className="px-3 py-2 text-sm border border-stone-300 rounded-lg"
-                            />
-                            <select
-                              value={editTripForm.truckId}
-                              onChange={(e) => setEditTripForm((current) => ({ ...current, truckId: e.target.value }))}
-                              className="px-3 py-2 text-sm border border-stone-300 rounded-lg bg-white"
-                            >
-                              <option value="">Select truck</option>
-                              {getAvailableTrucks(order._id, trip.truck?._id || trip.truck).map((truck) => (
-                                <option key={truck._id} value={truck._id}>
-                                  {truck.name} ({truck.plateNumber})
-                                </option>
-                              ))}
-                            </select>
-                            <input
-                              type="text"
-                              value={editTripForm.note}
-                              onChange={(e) => setEditTripForm((current) => ({ ...current, note: e.target.value }))}
-                              placeholder="Trip note"
-                              className="px-3 py-2 text-sm border border-stone-300 rounded-lg"
-                            />
-                            <p className="md:col-span-2 xl:col-span-3 text-xs text-stone-500">
-                              Truck capacity: {trucks.find((truck) => truck._id === editTripForm.truckId)?.capacity || 0}
-                            </p>
-                            <div className="flex gap-2 md:col-span-2 xl:col-span-3">
-                              <button
-                                type="button"
-                                disabled={actingId === trip._id}
-                                onClick={() => handleSaveTripEdit(trip)}
-                                className="px-3 py-2 text-xs bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
-                              >
-                                Save
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setEditingTripId(null)}
-                                className="px-3 py-2 text-xs border border-stone-300 text-stone-700 rounded-lg hover:bg-stone-50"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 min-w-0">
-                            <div className="min-w-0">
-                              <p className="font-medium text-stone-900 break-words">Trip #{trip.tripNumber}</p>
-                              <p className="text-sm text-stone-500 break-words">
-                                {trip.materialName}: {trip.deliveredQuantity} {trip.unit} on {trip.truck?.name} ({trip.truck?.plateNumber})
-                              </p>
-                              <p className="text-sm text-stone-500 break-words">
-                                Assigned by {trip.assignedBy?.name}
-                              </p>
-                              {trip.dispatchedAt && (
-                                <p className="text-xs text-stone-400 mt-1">
-                                  Dispatched: {new Date(trip.dispatchedAt).toLocaleString()}
-                                </p>
-                              )}
-                              {trip.deliveredAt && (
-                                <p className="text-xs text-stone-400 mt-1">
-                                  Delivered: {new Date(trip.deliveredAt).toLocaleString()}
-                                </p>
-                              )}
-                              {trip.note && (
-                                <p className="text-sm text-stone-600 mt-1 break-words">{trip.note}</p>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 flex-wrap lg:justify-end">
-                              <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${tripStatusStyles[trip.status] || tripStatusStyles.PENDING}`}>
-                                {trip.status}
-                              </span>
-                              <button
-                                type="button"
-                                disabled={actingId === trip._id || trip.status === "IN_TRANSIT" || trip.status === "DELIVERED" || trip.status === "CANCELLED"}
-                                onClick={() => handleTripStatusUpdate(trip._id, "IN_TRANSIT")}
-                                className="px-3 py-1.5 text-xs bg-sky-50 text-sky-700 rounded-lg hover:bg-sky-100 disabled:opacity-50"
-                              >
-                                Dispatch
-                              </button>
-                              <button
-                                type="button"
-                                disabled={actingId === trip._id || trip.status === "DELIVERED" || trip.status === "CANCELLED"}
-                                onClick={() => handleTripStatusUpdate(trip._id, "DELIVERED")}
-                                className="px-3 py-1.5 text-xs bg-teal-50 text-teal-700 rounded-lg hover:bg-teal-100 disabled:opacity-50"
-                              >
-                                Mark Delivered
-                              </button>
-                              <button
-                                type="button"
-                                disabled={trip.status === "DELIVERED" || trip.status === "CANCELLED"}
-                                onClick={() => startEditingTrip(trip)}
-                                className="px-3 py-1.5 text-xs bg-stone-100 text-stone-700 rounded-lg hover:bg-stone-200 disabled:opacity-50"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                disabled={trip.status === "DELIVERED" || trip.status === "CANCELLED"}
-                                onClick={() => handleCancelTrip(trip._id)}
-                                className="px-3 py-1.5 text-xs bg-rose-50 text-rose-700 rounded-lg hover:bg-rose-100 disabled:opacity-50"
-                              >
-                                Cancel Trip
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-stone-400">No delivery trips created yet.</p>
-                )}
+                        return (
+                          <tr key={`${selectedOrder._id}-${getMaterialId(item)}`}>
+                            <td className="px-5 py-4">
+                              <p className="font-medium text-stone-900">{item.materialName}</p>
+                              <p className="mt-1 text-xs text-stone-500">{item.unit}</p>
+                            </td>
+                            <td className="px-5 py-4 text-sm text-stone-700">
+                              {progress.ordered.toFixed(2)} {item.unit}
+                            </td>
+                            <td className="px-5 py-4 text-sm text-stone-700">
+                              {progress.assigned.toFixed(2)} {item.unit}
+                            </td>
+                            <td className="px-5 py-4 text-sm text-stone-700">
+                              {progress.delivered.toFixed(2)} {item.unit}
+                            </td>
+                            <td className="px-5 py-4 text-sm font-medium text-stone-900">
+                              {progress.remaining.toFixed(2)} {item.unit}
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="h-2 w-28 overflow-hidden rounded-full bg-stone-100">
+                                  <div
+                                    className="h-full rounded-full bg-teal-500"
+                                    style={{ width: `${progress.progress}%` }}
+                                  />
+                                </div>
+                                <span className="text-sm text-stone-600">
+                                  {progress.progress.toFixed(0)}%
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
-              {order.items.every(
-                (item) => getMaterialProgress(order, item).remaining <= 0
-              ) ? (
-                <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
-                  <p className="font-medium text-teal-800">All material quantities are already assigned to trips.</p>
-                  <p className="text-sm text-teal-700 mt-1">
-                    Add more trips only after cancelling an assigned trip or when a future workflow requires reassignment.
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-stone-900">Trip History</h3>
+                  <p className="text-sm text-stone-500">
+                    {selectedOrder.deliveryTrips?.length || 0} trip{selectedOrder.deliveryTrips?.length === 1 ? "" : "s"}
+                  </p>
+                </div>
+                <div className="overflow-x-auto rounded-xl border border-stone-200">
+                  {selectedOrder.deliveryTrips?.length > 0 ? (
+                    <table className="w-full min-w-[1120px]">
+                      <thead className="bg-stone-50">
+                        <tr className="border-b border-stone-200">
+                          <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                            Trip
+                          </th>
+                          <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                            Material
+                          </th>
+                          <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                            Quantity
+                          </th>
+                          <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                            Truck
+                          </th>
+                          <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                            Status
+                          </th>
+                          <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                            Dispatched
+                          </th>
+                          <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                            Delivered
+                          </th>
+                          <th className="px-5 py-3 text-right text-xs font-medium uppercase tracking-wide text-stone-500">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-100">
+                        {selectedOrder.deliveryTrips.map((trip) => (
+                          <tr key={trip._id}>
+                            <td className="px-5 py-4 text-sm font-medium text-stone-900">
+                              Trip #{trip.tripNumber}
+                              <p className="mt-1 text-xs font-normal text-stone-500">
+                                Assigned by {trip.assignedBy?.name || "-"}
+                              </p>
+                            </td>
+                            <td className="px-5 py-4 text-sm text-stone-700">
+                              {trip.materialName}
+                              {trip.note ? (
+                                <p className="mt-1 text-xs text-stone-500">{trip.note}</p>
+                              ) : null}
+                            </td>
+                            <td className="px-5 py-4 text-sm text-stone-700">
+                              {Number(trip.deliveredQuantity).toFixed(2)} {trip.unit}
+                            </td>
+                            <td className="px-5 py-4 text-sm text-stone-700">
+                              {trip.truck?.name || "-"}
+                              <p className="mt-1 text-xs text-stone-500">{trip.truck?.plateNumber || "-"}</p>
+                            </td>
+                            <td className="px-5 py-4">
+                              <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${tripStatusStyles[trip.status] || tripStatusStyles.PENDING}`}>
+                                {trip.status}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4 text-sm text-stone-600">
+                              {formatDateTime(trip.dispatchedAt)}
+                            </td>
+                            <td className="px-5 py-4 text-sm text-stone-600">
+                              {formatDateTime(trip.deliveredAt)}
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="flex flex-wrap justify-end gap-2">
+                                <button
+                                  type="button"
+                                  disabled={
+                                    actingId === trip._id ||
+                                    trip.status === "IN_TRANSIT" ||
+                                    trip.status === "DELIVERED" ||
+                                    trip.status === "CANCELLED"
+                                  }
+                                  onClick={() => handleTripStatusUpdate(trip._id, "IN_TRANSIT")}
+                                  className="rounded-lg bg-sky-50 px-3 py-2 text-xs font-medium text-sky-700 hover:bg-sky-100 disabled:opacity-50"
+                                >
+                                  Dispatch
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={
+                                    actingId === trip._id ||
+                                    trip.status === "DELIVERED" ||
+                                    trip.status === "CANCELLED"
+                                  }
+                                  onClick={() => handleTripStatusUpdate(trip._id, "DELIVERED")}
+                                  className="rounded-lg bg-teal-50 px-3 py-2 text-xs font-medium text-teal-700 hover:bg-teal-100 disabled:opacity-50"
+                                >
+                                  Mark Delivered
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={trip.status === "DELIVERED" || trip.status === "CANCELLED"}
+                                  onClick={() => startEditingTrip(trip)}
+                                  className="rounded-lg bg-stone-100 px-3 py-2 text-xs font-medium text-stone-700 hover:bg-stone-200 disabled:opacity-50"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={trip.status === "DELIVERED" || trip.status === "CANCELLED"}
+                                  onClick={() => handleCancelTrip(trip._id)}
+                                  className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="p-10 text-center">
+                      <p className="font-medium text-stone-600">No delivery trips created yet</p>
+                      <p className="mt-1 text-sm text-stone-400">
+                        Use the trip form below to assign the first delivery round.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {editingTripId && selectedOrder.deliveryTrips?.some((trip) => trip._id === editingTripId) ? (
+                <div className="rounded-xl border border-stone-200 bg-stone-50 p-4">
+                  <h4 className="text-base font-semibold text-stone-900">Edit Trip</h4>
+                  <div className="mt-4 grid gap-3 lg:grid-cols-4">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={editTripForm.deliveredQuantity}
+                      onChange={(e) =>
+                        setEditTripForm((current) => ({
+                          ...current,
+                          deliveredQuantity: e.target.value,
+                        }))
+                      }
+                      placeholder="Delivered quantity"
+                      className="rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900"
+                    />
+                    <select
+                      value={editTripForm.truckId}
+                      onChange={(e) =>
+                        setEditTripForm((current) => ({ ...current, truckId: e.target.value }))
+                      }
+                      className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900"
+                    >
+                      <option value="">Select truck</option>
+                      {getAvailableTrucks(
+                        selectedOrder._id,
+                        selectedOrder.deliveryTrips.find((trip) => trip._id === editingTripId)?.truck?._id ||
+                          selectedOrder.deliveryTrips.find((trip) => trip._id === editingTripId)?.truck
+                      ).map((truck) => (
+                        <option key={truck._id} value={truck._id}>
+                          {truck.name} ({truck.plateNumber})
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      value={editTripForm.note}
+                      onChange={(e) =>
+                        setEditTripForm((current) => ({ ...current, note: e.target.value }))
+                      }
+                      placeholder="Trip note"
+                      className="rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 lg:col-span-2"
+                    />
+                  </div>
+                  <div className="mt-3 flex flex-col gap-3 text-sm text-stone-500 sm:flex-row sm:items-center sm:justify-between">
+                    <p>
+                      Truck capacity: {trucks.find((truck) => truck._id === editTripForm.truckId)?.capacity || 0}
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingTripId(null);
+                          setEditTripForm({
+                            deliveredQuantity: "",
+                            truckId: "",
+                            note: "",
+                          });
+                        }}
+                        className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-white"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        disabled={actingId === editingTripId}
+                        onClick={() =>
+                          handleSaveTripEdit(
+                            selectedOrder.deliveryTrips.find((trip) => trip._id === editingTripId)
+                          )
+                        }
+                        className="rounded-lg bg-teal-600 px-3 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+                      >
+                        Save Changes
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {isOrderFullyAssigned(selectedOrder) ? (
+                <div className="rounded-xl border border-teal-200 bg-teal-50 p-4">
+                  <p className="font-medium text-teal-800">
+                    All material quantities are already assigned to trips.
+                  </p>
+                  <p className="mt-1 text-sm text-teal-700">
+                    Cancel or edit an existing trip if you need to reassign this order.
                   </p>
                 </div>
               ) : (
-                <div className="bg-stone-50 border border-stone-200 rounded-lg p-4 overflow-hidden">
-                  <h4 className="font-medium text-stone-900 mb-3">Create New Truck Trip</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                <div className="rounded-xl border border-stone-200 bg-stone-50 p-4">
+                  <div className="flex flex-col gap-1">
+                    <h4 className="text-base font-semibold text-stone-900">Create New Trip</h4>
+                    <p className="text-sm text-stone-500">
+                      Assign one truck and one material per trip. Remaining values update automatically as trips are added.
+                    </p>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 lg:grid-cols-5">
                     <select
-                      value={getTripForm(order._id).materialId}
-                      onChange={(e) => handleTripFormChange(order._id, "materialId", e.target.value)}
-                      className="px-3 py-2 text-sm border border-stone-300 rounded-lg bg-white"
+                      value={getTripForm(selectedOrder._id).materialId}
+                      onChange={(e) =>
+                        handleTripFormChange(selectedOrder._id, "materialId", e.target.value)
+                      }
+                      className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900"
                     >
                       <option value="">Select material</option>
-                      {order.items.map((item) => {
-                        const remaining = getMaterialProgress(order, item).remaining;
+                      {selectedOrder.items.map((item) => {
+                        const remaining = getMaterialProgress(selectedOrder, item).remaining;
 
                         return (
                           <option
-                            key={`${order._id}-${item.materialName}`}
+                            key={`${selectedOrder._id}-${getMaterialId(item)}`}
                             value={getMaterialId(item)}
                             disabled={remaining <= 0}
                           >
@@ -720,79 +837,89 @@ const DeliveryManagement = () => {
                       })}
                     </select>
                     <input
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      max={getSelectedTruck(order._id)?.capacity > 0 ? getSelectedTruck(order._id).capacity : undefined}
-                      value={getTripForm(order._id).deliveredQuantity}
-                      onChange={(e) => handleTripFormChange(order._id, "deliveredQuantity", e.target.value)}
-                      placeholder="Delivered qty"
-                      className="px-3 py-2 text-sm border border-stone-300 rounded-lg"
+                      type="text"
+                      inputMode="decimal"
+                      value={getTripForm(selectedOrder._id).deliveredQuantity}
+                      onChange={(e) =>
+                        handleTripFormChange(selectedOrder._id, "deliveredQuantity", e.target.value)
+                      }
+                      placeholder="Quantity"
+                      className="rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900"
                     />
                     <select
-                      value={getTripForm(order._id).truckId}
-                      onChange={(e) => handleTripFormChange(order._id, "truckId", e.target.value)}
-                      className="px-3 py-2 text-sm border border-stone-300 rounded-lg bg-white"
+                      value={getTripForm(selectedOrder._id).truckId}
+                      onChange={(e) =>
+                        handleTripFormChange(selectedOrder._id, "truckId", e.target.value)
+                      }
+                      className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900"
                     >
                       <option value="">Select truck</option>
-                      {getAvailableTrucks(order._id).map((truck) => (
+                      {getAvailableTrucks(selectedOrder._id).map((truck) => (
                         <option key={truck._id} value={truck._id}>
                           {truck.name} ({truck.plateNumber})
                         </option>
                       ))}
                     </select>
                     <select
-                      value={getTripForm(order._id).status}
-                      onChange={(e) => handleTripFormChange(order._id, "status", e.target.value)}
-                      className="px-3 py-2 text-sm border border-stone-300 rounded-lg bg-white"
+                      value={getTripForm(selectedOrder._id).status}
+                      onChange={(e) =>
+                        handleTripFormChange(selectedOrder._id, "status", e.target.value)
+                      }
+                      className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900"
                     >
                       <option value="PENDING">Pending</option>
                       <option value="IN_TRANSIT">In Transit</option>
                       <option value="DELIVERED">Delivered</option>
                     </select>
-                    <input
-                      type="text"
-                      value={getTripForm(order._id).note}
-                      onChange={(e) => handleTripFormChange(order._id, "note", e.target.value)}
-                      placeholder="Truck / trip note"
-                      className="px-3 py-2 text-sm border border-stone-300 rounded-lg md:col-span-2"
-                    />
                     <button
                       type="button"
-                      disabled={actingId === order._id}
-                      onClick={() => handleCreateTrip(order._id)}
-                      className="px-4 py-2 text-sm bg-stone-900 text-white rounded-lg hover:bg-stone-800 disabled:opacity-50"
+                      disabled={actingId === selectedOrder._id}
+                      onClick={() => handleCreateTrip(selectedOrder._id)}
+                      className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-800 disabled:opacity-50"
                     >
                       Add Trip
                     </button>
                   </div>
-                  {getSelectedTruck(order._id) && (
-                    <p className="text-xs text-stone-500 mt-3">
-                      Selected truck capacity: {getSelectedTruck(order._id).capacity || 0}
-                    </p>
-                  )}
-                  {getTripForm(order._id).materialId && (
-                    <p className="text-xs text-stone-500 mt-1">
-                      Remaining for selected material: {(
-                        getMaterialProgress(
-                          order,
-                          order.items.find(
-                            (item) => getMaterialId(item) === String(getTripForm(order._id).materialId)
-                          ) || order.items[0]
-                        ).remaining
-                      ).toFixed(2)}
-                    </p>
-                  )}
-                  {getAvailableTrucks(order._id).length === 0 && (
-                    <p className="text-xs text-amber-700 mt-2">
-                      No trucks are currently available. Check the Busy Trucks section above.
-                    </p>
-                  )}
+
+                  <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
+                    <input
+                      type="text"
+                      value={getTripForm(selectedOrder._id).note}
+                      onChange={(e) => handleTripFormChange(selectedOrder._id, "note", e.target.value)}
+                      placeholder="Trip note"
+                      className="rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900"
+                    />
+                    <div className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-600">
+                      Truck capacity: {getSelectedTruck(selectedOrder._id)?.capacity || 0}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex flex-col gap-1 text-xs text-stone-500">
+                    {getTripForm(selectedOrder._id).materialId ? (
+                      <p>
+                        Remaining for selected material: {(
+                          getMaterialProgress(
+                            selectedOrder,
+                            selectedOrder.items.find(
+                              (item) =>
+                                getMaterialId(item) ===
+                                String(getTripForm(selectedOrder._id).materialId)
+                            ) || selectedOrder.items[0]
+                          ).remaining
+                        ).toFixed(2)}
+                      </p>
+                    ) : null}
+                    {getAvailableTrucks(selectedOrder._id).length === 0 ? (
+                      <p className="text-amber-700">
+                        No trucks are currently available. Complete or cancel an active trip first.
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
               )}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
     </div>
   );

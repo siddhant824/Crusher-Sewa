@@ -19,6 +19,7 @@ import AddTruck from "../pages/AddTruck.jsx";
 import Materials from "../pages/contractor/Materials.jsx";
 import Orders from "../pages/contractor/Orders.jsx";
 import Profile from "../pages/contractor/Profile.jsx";
+import PaymentReturn from "../pages/PaymentReturn.jsx";
 import PrivateRoute from "./PrivateRoute.jsx";
 
 const AppRoutes = () => (
@@ -28,6 +29,8 @@ const AppRoutes = () => (
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
     </Route>
+
+    <Route path="/payment-return" element={<PaymentReturn />} />
 
     <Route
       path="/admin"

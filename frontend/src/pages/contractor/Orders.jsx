@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { createOrder, getMyOrders } from "../../services/ordersApi.js";
+import { initiateEsewaPayment, verifyPayment } from "../../services/paymentsApi.js";
 import { clearDraftOrder, getDraftOrder, saveDraftOrder } from "../../utils/orderDraft.js";
 
 const statusStyles = {
@@ -29,16 +31,185 @@ const tripStatusStyles = {
   CANCELLED: "bg-rose-50 text-rose-700",
 };
 
+const ACTIVE_ESEWA_PAYMENT_KEY = "cms_active_esewa_payment";
+const FINAL_PAYMENT_STATUSES = new Set([
+  "COMPLETE",
+  "FAILED",
+  "CANCELED",
+  "FULL_REFUND",
+  "PARTIAL_REFUND",
+]);
+
 const Orders = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [draftItems, setDraftItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [confirmingDraft, setConfirmingDraft] = useState(false);
+  const [payingOrderId, setPayingOrderId] = useState(null);
+  const handledPaymentSearchRef = useRef("");
+  const isVerifyingPaymentRef = useRef(false);
+  const lastPaymentFeedbackRef = useRef("");
+  const syncPaymentVerificationRef = useRef(null);
 
   useEffect(() => {
     fetchOrders();
     setDraftItems(getDraftOrder());
   }, []);
+
+  const showPaymentToast = (paymentStatus, paymentId = "") => {
+    const feedbackKey = `${paymentId}:${paymentStatus}`;
+
+    if (lastPaymentFeedbackRef.current === feedbackKey) {
+      return;
+    }
+
+    lastPaymentFeedbackRef.current = feedbackKey;
+
+    if (paymentStatus === "COMPLETE") {
+      toast.success("eSewa payment completed successfully");
+    } else if (paymentStatus === "PENDING") {
+      toast("Payment is still pending verification");
+    } else if (paymentStatus === "FAILED" || paymentStatus === "CANCELED") {
+      toast.error(`Payment returned with status: ${paymentStatus}`);
+    } else if (paymentStatus === "INITIATED") {
+      toast("Payment session was created. Waiting for eSewa confirmation.");
+    } else {
+      toast(`Payment returned with status: ${paymentStatus}`);
+    }
+  };
+
+  const saveActivePayment = (paymentId, orderId) => {
+    sessionStorage.setItem(
+      ACTIVE_ESEWA_PAYMENT_KEY,
+      JSON.stringify({
+        paymentId,
+        orderId,
+      })
+    );
+  };
+
+  const getActivePayment = () => {
+    try {
+      const raw = sessionStorage.getItem(ACTIVE_ESEWA_PAYMENT_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const clearActivePayment = () => {
+    sessionStorage.removeItem(ACTIVE_ESEWA_PAYMENT_KEY);
+  };
+
+  const syncPaymentVerification = async ({ paymentId, initialStatus = "" }) => {
+    if (!paymentId || isVerifyingPaymentRef.current) {
+      return;
+    }
+
+    isVerifyingPaymentRef.current = true;
+
+    try {
+      const verified = await verifyPayment(paymentId);
+      const verifiedStatus = verified.payment?.status || initialStatus || "PENDING";
+      const data = await getMyOrders();
+      setOrders(data.orders || []);
+      showPaymentToast(verifiedStatus, paymentId);
+
+      if (FINAL_PAYMENT_STATUSES.has(verifiedStatus)) {
+        clearActivePayment();
+      }
+    } catch {
+      if (initialStatus && initialStatus !== "INITIATED") {
+        showPaymentToast(initialStatus, paymentId);
+      }
+    } finally {
+      isVerifyingPaymentRef.current = false;
+      setPayingOrderId(null);
+    }
+  };
+
+  syncPaymentVerificationRef.current = syncPaymentVerification;
+
+  useEffect(() => {
+    const handlePaymentMessage = async (event) => {
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+
+      if (event.data?.type !== "ESEWA_PAYMENT_RESULT") {
+        return;
+      }
+
+      await syncPaymentVerificationRef.current?.({
+        paymentId: event.data.paymentId,
+        initialStatus: event.data.paymentStatus,
+      });
+    };
+
+    window.addEventListener("message", handlePaymentMessage);
+    return () => window.removeEventListener("message", handlePaymentMessage);
+  }, []);
+
+  useEffect(() => {
+    const checkActivePayment = async () => {
+      const activePayment = getActivePayment();
+
+      if (!activePayment?.paymentId) {
+        return;
+      }
+
+      await syncPaymentVerificationRef.current?.({
+        paymentId: activePayment.paymentId,
+      });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        checkActivePayment();
+      }
+    };
+
+    window.addEventListener("focus", checkActivePayment);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    checkActivePayment();
+
+    return () => {
+      window.removeEventListener("focus", checkActivePayment);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const paymentStatus = params.get("paymentStatus");
+
+    if (!paymentStatus) {
+      return;
+    }
+
+    if (handledPaymentSearchRef.current === location.search) {
+      return;
+    }
+
+    handledPaymentSearchRef.current = location.search;
+
+    const refreshOrdersAfterPayment = async () => {
+      try {
+        const data = await getMyOrders();
+        setOrders(data.orders || []);
+        showPaymentToast(paymentStatus, params.get("paymentId") || "");
+      } catch (err) {
+        toast.error(err.message || "Failed to refresh orders after payment");
+      } finally {
+        handledPaymentSearchRef.current = "";
+        navigate(location.pathname, { replace: true });
+      }
+    };
+
+    refreshOrdersAfterPayment();
+  }, [location.pathname, location.search, navigate]);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -104,6 +275,39 @@ const Orders = () => {
       toast.error(err.message || "Failed to confirm draft order");
     } finally {
       setConfirmingDraft(false);
+    }
+  };
+
+  const submitEsewaForm = (formUrl, fields, target) => {
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = formUrl;
+    form.target = target;
+
+    Object.entries(fields).forEach(([key, value]) => {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = key;
+      input.value = value;
+      form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
+    window.setTimeout(() => form.remove(), 0);
+  };
+
+  const handleEsewaPayment = async (orderId) => {
+    setPayingOrderId(orderId);
+    try {
+      const data = await initiateEsewaPayment(orderId);
+      saveActivePayment(data.payment?._id, orderId);
+      submitEsewaForm(data.esewa.formUrl, data.esewa.fields, "esewa-payment-window");
+      setPayingOrderId(null);
+      toast("Complete the payment in the eSewa tab. This page will update automatically.");
+    } catch (err) {
+      toast.error(err.message || "Failed to start eSewa payment");
+      setPayingOrderId(null);
     }
   };
 
@@ -225,9 +429,9 @@ const Orders = () => {
             ))}
           </div>
 
-          <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <p className="text-sm text-amber-700">Draft Total</p>
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <p className="text-sm text-amber-700">Draft Total</p>
               <p className="text-2xl font-semibold text-stone-900">
                 Rs. {draftTotal.toFixed(2)}
               </p>
@@ -300,6 +504,25 @@ const Orders = () => {
                   </div>
                 ))}
               </div>
+
+              {order.orderStatus === "APPROVED" && order.paymentStatus !== "PAID" && (
+                <div className="mt-4 border-t border-stone-100 pt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-stone-900">Online Payment</p>
+                    <p className="text-sm text-stone-500">
+                      Pay the remaining amount for this approved order through eSewa.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleEsewaPayment(order._id)}
+                    disabled={payingOrderId === order._id}
+                    className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {payingOrderId === order._id ? "Redirecting..." : "Pay with eSewa"}
+                  </button>
+                </div>
+              )}
 
               {order.deliveryTrips?.length > 0 && (
                 <div className="mt-4 border-t border-stone-100 pt-4">

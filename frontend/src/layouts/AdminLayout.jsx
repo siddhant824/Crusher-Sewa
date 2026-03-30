@@ -20,6 +20,12 @@ const AdminLayout = () => {
     if (path.includes("/trucks") && location.pathname.includes("/trucks")) {
       return location.pathname.startsWith(basePath + "/trucks");
     }
+    if (path.includes("/payments") && location.pathname.includes("/payments")) {
+      return location.pathname.startsWith(basePath + "/payments");
+    }
+    if (path.includes("/invoices") && location.pathname.includes("/invoices")) {
+      return location.pathname.startsWith(basePath + "/invoices");
+    }
     return location.pathname.startsWith(path + "/");
   };
 
@@ -33,6 +39,8 @@ const AdminLayout = () => {
     { path: `${basePath}/orders`, label: "Orders", icon: "clipboard", show: true },
     { path: `${basePath}/delivery`, label: "Delivery", icon: "truck", show: true },
     { path: `${basePath}/trucks`, label: "Trucks", icon: "truck", show: true },
+    { path: `${basePath}/payments`, label: "Payments", icon: "wallet", show: true },
+    { path: `${basePath}/invoices`, label: "Invoices", icon: "document", show: true },
     { path: `${basePath}/stock`, label: "Stock Control", icon: "chart", show: true },
   ].filter(item => item.show);
 
@@ -78,6 +86,18 @@ const AdminLayout = () => {
         return (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 17h8m-8 0a2 2 0 11-4 0m4 0a2 2 0 104 0m4 0a2 2 0 104 0m-4 0h-4m4 0V9a1 1 0 00-1-1h-3m0 0V6a1 1 0 00-1-1H3a1 1 0 00-1 1v11h2m10-9h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 01.293.707V17h-2" />
+          </svg>
+        );
+      case "wallet":
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2m0-6h3v6h-3a2 2 0 110-4h3" />
+          </svg>
+        );
+      case "document":
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
         );
       default:

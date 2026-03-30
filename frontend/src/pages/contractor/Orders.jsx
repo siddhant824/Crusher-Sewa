@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { createOrder, getMyOrders } from "../../services/ordersApi.js";
 import { initiateEsewaPayment, verifyPayment } from "../../services/paymentsApi.js";
+import { getInvoices } from "../../services/invoicesApi.js";
 import { clearDraftOrder, getDraftOrder, saveDraftOrder } from "../../utils/orderDraft.js";
 
 const statusStyles = {
@@ -45,6 +46,7 @@ const Orders = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [draftItems, setDraftItems] = useState([]);
+  const [invoiceMap, setInvoiceMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [confirmingDraft, setConfirmingDraft] = useState(false);
   const [payingOrderId, setPayingOrderId] = useState(null);
@@ -53,10 +55,36 @@ const Orders = () => {
   const lastPaymentFeedbackRef = useRef("");
   const syncPaymentVerificationRef = useRef(null);
 
+  const fetchInvoices = useCallback(async () => {
+    try {
+      const data = await getInvoices();
+      const nextMap = {};
+      (data.invoices || []).forEach((invoice) => {
+        nextMap[String(invoice.order?._id || invoice.order)] = invoice;
+      });
+      setInvoiceMap(nextMap);
+    } catch {
+      // Allow orders page to load even if invoices are unavailable.
+    }
+  }, []);
+
+  const fetchOrders = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getMyOrders();
+      setOrders(data.orders || []);
+      fetchInvoices();
+    } catch (err) {
+      toast.error(err.message || "Failed to load orders");
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchInvoices]);
+
   useEffect(() => {
     fetchOrders();
     setDraftItems(getDraftOrder());
-  }, []);
+  }, [fetchOrders]);
 
   const showPaymentToast = (paymentStatus, paymentId = "") => {
     const feedbackKey = `${paymentId}:${paymentStatus}`;
@@ -115,6 +143,7 @@ const Orders = () => {
       const verifiedStatus = verified.payment?.status || initialStatus || "PENDING";
       const data = await getMyOrders();
       setOrders(data.orders || []);
+      fetchInvoices();
       showPaymentToast(verifiedStatus, paymentId);
 
       if (FINAL_PAYMENT_STATUSES.has(verifiedStatus)) {
@@ -199,6 +228,7 @@ const Orders = () => {
       try {
         const data = await getMyOrders();
         setOrders(data.orders || []);
+        fetchInvoices();
         showPaymentToast(paymentStatus, params.get("paymentId") || "");
       } catch (err) {
         toast.error(err.message || "Failed to refresh orders after payment");
@@ -209,19 +239,7 @@ const Orders = () => {
     };
 
     refreshOrdersAfterPayment();
-  }, [location.pathname, location.search, navigate]);
-
-  const fetchOrders = async () => {
-    setLoading(true);
-    try {
-      const data = await getMyOrders();
-      setOrders(data.orders || []);
-    } catch (err) {
-      toast.error(err.message || "Failed to load orders");
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [fetchInvoices, location.pathname, location.search, navigate]);
 
   const updateDraftItems = (updater) => {
     setDraftItems((current) => {
@@ -271,6 +289,7 @@ const Orders = () => {
       clearDraftOrder();
       setDraftItems([]);
       setOrders((current) => [data.order, ...current]);
+      fetchInvoices();
     } catch (err) {
       toast.error(err.message || "Failed to confirm draft order");
     } finally {
@@ -521,6 +540,23 @@ const Orders = () => {
                   >
                     {payingOrderId === order._id ? "Redirecting..." : "Pay with eSewa"}
                   </button>
+                </div>
+              )}
+
+              {invoiceMap[order._id] && (
+                <div className="mt-4 border-t border-stone-100 pt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-stone-900">Invoice Ready</p>
+                    <p className="text-sm text-stone-500">
+                      Invoice {invoiceMap[order._id].invoiceNumber} is available to view or save as PDF.
+                    </p>
+                  </div>
+                  <Link
+                    to={`/contractor/invoices/${invoiceMap[order._id]._id}`}
+                    className="rounded-2xl border border-stone-300 px-5 py-3 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-50"
+                  >
+                    View Invoice
+                  </Link>
                 </div>
               )}
 

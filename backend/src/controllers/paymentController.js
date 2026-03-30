@@ -17,7 +17,7 @@ import {
 const paymentPopulate = [
   {
     path: "order",
-    select: "contractor totalAmount paymentStatus orderStatus",
+    select: "contractor totalAmount paymentStatus orderStatus deliveryStatus createdAt",
   },
   {
     path: "contractor",
@@ -302,6 +302,139 @@ export const getPaymentsForOrder = async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       message: err.message || "Failed to fetch payments for this order",
+    });
+  }
+};
+
+export const getMyPayments = async (req, res) => {
+  try {
+    const payments = await Payment.find({ contractor: req.user._id })
+      .populate(paymentPopulate)
+      .sort({ createdAt: -1 });
+
+    return res.json({ payments });
+  } catch (err) {
+    return res.status(500).json({
+      message: err.message || "Failed to fetch your payments",
+    });
+  }
+};
+
+export const getAllPayments = async (req, res) => {
+  try {
+    const { status = "", provider = "", search = "" } = req.query;
+    const query = {};
+
+    if (status.trim()) {
+      query.status = status.trim().toUpperCase();
+    }
+
+    if (provider.trim()) {
+      query.provider = provider.trim().toUpperCase();
+    }
+
+    const payments = await Payment.find(query)
+      .populate(paymentPopulate)
+      .sort({ createdAt: -1 });
+
+    const normalizedSearch = search.trim().toLowerCase();
+    const filteredPayments = normalizedSearch
+      ? payments.filter((payment) => {
+          const contractorName = payment.contractor?.name?.toLowerCase() || "";
+          const contractorEmail = payment.contractor?.email?.toLowerCase() || "";
+          const transactionUuid = String(payment.transactionUuid || "").toLowerCase();
+          const providerTransactionId = String(payment.providerTransactionId || "").toLowerCase();
+
+          return (
+            contractorName.includes(normalizedSearch) ||
+            contractorEmail.includes(normalizedSearch) ||
+            transactionUuid.includes(normalizedSearch) ||
+            providerTransactionId.includes(normalizedSearch)
+          );
+        })
+      : payments;
+
+    return res.json({ payments: filteredPayments });
+  } catch (err) {
+    return res.status(500).json({
+      message: err.message || "Failed to fetch payments",
+    });
+  }
+};
+
+export const getPaymentSummary = async (_req, res) => {
+  try {
+    const payments = await Payment.find();
+    const totalCollected = payments
+      .filter((payment) => payment.status === "COMPLETE" || payment.status === "PARTIAL_REFUND")
+      .reduce((sum, payment) => sum + Number(payment.amount), 0);
+
+    return res.json({
+      summary: {
+        totalTransactions: payments.length,
+        totalCollected: parseAmount(totalCollected || 0),
+        completePayments: payments.filter((payment) => payment.status === "COMPLETE").length,
+        pendingPayments: payments.filter((payment) => payment.status === "PENDING").length,
+        failedPayments: payments.filter((payment) => payment.status === "FAILED").length,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({
+      message: err.message || "Failed to fetch payment summary",
+    });
+  }
+};
+
+export const recordManualPayment = async (req, res) => {
+  const { orderId, amount, note = "", referenceId = "" } = req.body;
+
+  if (!orderId) {
+    return res.status(400).json({ message: "orderId is required" });
+  }
+
+  try {
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    const snapshot = await getOrderPaymentSnapshot(orderId);
+    const requestedAmount = parseAmount(amount);
+
+    if (Number.isNaN(requestedAmount) || requestedAmount <= 0) {
+      return res.status(400).json({ message: "amount must be a valid positive number" });
+    }
+
+    if (requestedAmount > snapshot.outstandingAmount + 0.001) {
+      return res.status(400).json({
+        message: `Amount exceeds remaining payable amount of Rs. ${snapshot.outstandingAmount.toFixed(2)}`,
+      });
+    }
+
+    const payment = await Payment.create({
+      order: order._id,
+      contractor: order.contractor,
+      provider: "MANUAL",
+      productCode: "MANUAL",
+      transactionUuid: generateEsewaTransactionUuid(new Payment()._id),
+      providerTransactionId: referenceId.trim(),
+      amount: requestedAmount,
+      status: "COMPLETE",
+      completedAt: new Date(),
+      note: note.trim(),
+    });
+
+    const { order: updatedOrder } = await syncOrderPaymentStatus(order._id);
+    const populatedPayment = await Payment.findById(payment._id).populate(paymentPopulate);
+
+    return res.status(201).json({
+      message: "Manual payment recorded successfully",
+      payment: populatedPayment,
+      order: updatedOrder,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      message: err.message || "Failed to record manual payment",
     });
   }
 };

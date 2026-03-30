@@ -13,6 +13,8 @@ import stockRoutes from "./routes/stockRoutes.js";
 import deliveryRoutes from "./routes/deliveryRoutes.js";
 import truckRoutes from "./routes/truckRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
+import invoiceRoutes from "./routes/invoiceRoutes.js";
+import reportRoutes from "./routes/reportRoutes.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -47,6 +49,8 @@ app.use("/api/stock", stockRoutes);
 app.use("/api/delivery-trips", deliveryRoutes);
 app.use("/api/trucks", truckRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/invoices", invoiceRoutes);
+app.use("/api/reports", reportRoutes);
 
 // Start server after DB connects
 const start = async () => {

@@ -16,14 +16,14 @@ const paymentSchema = new mongoose.Schema(
     },
     provider: {
       type: String,
-      enum: ["ESEWA"],
+      enum: ["ESEWA", "MANUAL"],
       default: "ESEWA",
       required: true,
     },
     productCode: {
       type: String,
-      required: true,
       trim: true,
+      default: "",
     },
     transactionUuid: {
       type: String,

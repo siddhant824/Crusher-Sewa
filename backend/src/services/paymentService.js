@@ -2,60 +2,51 @@ import crypto from "crypto";
 import Order from "../models/Order.js";
 import Payment from "../models/Payment.js";
 
-const UAT_SECRET_KEY = "8gBm/:&EnhH.1/q";
-const UAT_PRODUCT_CODE = "EPAYTEST";
-
 const normalizeAmount = (value) => Number(Number(value).toFixed(2));
 
-const isProductionEsewa = () =>
-  String(process.env.ESEWA_ENV || "").trim().toUpperCase() === "PRODUCTION";
+const getRequiredEnv = (name) => {
+  const value = process.env[name]?.trim();
+
+  if (!value) {
+    throw new Error(`${name} is not configured`);
+  }
+
+  return value;
+};
+
+const getRequiredUrlEnv = (name) => {
+  const value = getRequiredEnv(name);
+
+  try {
+    return new URL(value).toString().replace(/\/$/, "");
+  } catch {
+    throw new Error(`${name} must be a valid absolute URL`);
+  }
+};
 
 export const getEsewaConfig = () => {
-  const isProduction = isProductionEsewa();
-  const productCode = process.env.ESEWA_PRODUCT_CODE?.trim() || UAT_PRODUCT_CODE;
-  const secretKey = process.env.ESEWA_SECRET_KEY?.trim() || (!isProduction ? UAT_SECRET_KEY : "");
-  const defaultFormUrl = isProduction
-    ? "https://epay.esewa.com.np/api/epay/main/v2/form"
-    : "https://rc-epay.esewa.com.np/api/epay/main/v2/form";
-  const defaultStatusCheckUrl = isProduction
-    ? "https://esewa.com.np/api/epay/transaction/status/"
-    : "https://rc.esewa.com.np/api/epay/transaction/status/";
+  const env = getRequiredEnv("ESEWA_ENV").toUpperCase();
+
+  if (env !== "UAT" && env !== "PRODUCTION") {
+    throw new Error('ESEWA_ENV must be either "UAT" or "PRODUCTION"');
+  }
 
   return {
-    env: isProduction ? "PRODUCTION" : "UAT",
-    productCode,
-    secretKey,
-    formUrl: process.env.ESEWA_FORM_URL?.trim() || defaultFormUrl,
-    statusCheckUrl: process.env.ESEWA_STATUS_CHECK_URL?.trim() || defaultStatusCheckUrl,
+    env,
+    productCode: getRequiredEnv("ESEWA_PRODUCT_CODE"),
+    secretKey: getRequiredEnv("ESEWA_SECRET_KEY"),
+    formUrl: getRequiredUrlEnv("ESEWA_FORM_URL"),
+    statusCheckUrl: getRequiredUrlEnv("ESEWA_STATUS_CHECK_URL"),
   };
 };
 
 const getEsewaStatusUrlCandidates = () => {
   const config = getEsewaConfig();
-  const candidates = [config.statusCheckUrl];
-
-  if (config.env === "UAT") {
-    candidates.push("https://uat.esewa.com.np/api/epay/transaction/status/");
-    candidates.push("https://rc.esewa.com.np/api/epay/transaction/status/");
-  } else {
-    candidates.push("https://epay.esewa.com.np/api/epay/transaction/status/");
-    candidates.push("https://esewa.com.np/api/epay/transaction/status/");
-  }
-
-  return [...new Set(candidates.filter(Boolean))];
+  return [config.statusCheckUrl];
 };
 
 export const assertEsewaConfig = () => {
   const config = getEsewaConfig();
-
-  if (!config.secretKey) {
-    throw new Error("ESEWA_SECRET_KEY is not configured");
-  }
-
-  if (!config.productCode) {
-    throw new Error("ESEWA_PRODUCT_CODE is not configured");
-  }
-
   return config;
 };
 
@@ -105,10 +96,9 @@ export const generateEsewaTransactionUuid = (paymentId) => {
   return `${Date.now()}-${suffix}`.replace(/[^A-Za-z0-9-]/g, "");
 };
 
-const getBackendBaseUrl = () =>
-  process.env.BACKEND_BASE_URL?.trim() || `http://localhost:${process.env.PORT || 5000}`;
+export const getBackendBaseUrl = () => getRequiredUrlEnv("BACKEND_BASE_URL");
 
-export const getFrontendBaseUrl = () => process.env.FRONTEND_URL?.trim() || "";
+export const getFrontendBaseUrl = () => getRequiredUrlEnv("FRONTEND_URL");
 
 export const buildEsewaCallbackUrls = (paymentId) => {
   const baseUrl = getBackendBaseUrl();

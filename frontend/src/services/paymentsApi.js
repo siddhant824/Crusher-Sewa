@@ -46,3 +46,46 @@ export const getPaymentsForOrder = async (orderId) => {
 
   return parseResponse(res);
 };
+
+export const getMyPayments = async () => {
+  const res = await fetch(`${apiBase}/api/payments/my`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  return parseResponse(res);
+};
+
+export const getAllPayments = async ({ status = "", provider = "", search = "" } = {}) => {
+  const params = new URLSearchParams();
+  if (status) params.set("status", status);
+  if (provider) params.set("provider", provider);
+  if (search) params.set("search", search);
+
+  const query = params.toString();
+  const res = await fetch(`${apiBase}/api/payments${query ? `?${query}` : ""}`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  return parseResponse(res);
+};
+
+export const getPaymentSummary = async () => {
+  const res = await fetch(`${apiBase}/api/payments/summary`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  return parseResponse(res);
+};
+
+export const recordManualPayment = async (payload) => {
+  const res = await fetch(`${apiBase}/api/payments/manual`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+
+  return parseResponse(res);
+};

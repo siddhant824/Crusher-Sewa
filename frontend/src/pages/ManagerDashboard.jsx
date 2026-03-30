@@ -1,18 +1,10 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import toast from "react-hot-toast";
 import { useAuth } from "../hooks/useAuth.js";
-
-const stats = [
-  { label: "Materials", value: "Live", note: "Inventory can be created and updated" },
-  { label: "Orders", value: "Live", note: "Approval now updates order status and stock" },
-  { label: "Stock Logs", value: "Live", note: "Production and adjustment logs are now available" },
-];
+import { getReportSummary } from "../services/reportsApi.js";
 
 const actions = [
-  {
-    title: "Add Material",
-    desc: "Create a new material with rate, stock, and optional image.",
-    path: "/manager/materials/add",
-  },
   {
     title: "Manage Materials",
     desc: "Update material details and keep visible stock accurate.",
@@ -28,10 +20,52 @@ const actions = [
     desc: "Create truck trips and update dispatch or delivery progress.",
     path: "/manager/delivery",
   },
+  {
+    title: "Payments",
+    desc: "Track transaction history and manual collections.",
+    path: "/manager/payments",
+  },
+  {
+    title: "Invoices",
+    desc: "Generate invoices for approved orders.",
+    path: "/manager/invoices",
+  },
 ];
 
 const ManagerDashboard = () => {
   const { user } = useAuth();
+  const [summary, setSummary] = useState(null);
+
+  useEffect(() => {
+    const fetchSummary = async () => {
+      try {
+        const data = await getReportSummary();
+        setSummary(data);
+      } catch (err) {
+        toast.error(err.message || "Failed to load dashboard summary");
+      }
+    };
+
+    fetchSummary();
+  }, []);
+
+  const stats = [
+    {
+      label: "Revenue",
+      value: summary ? `Rs. ${summary.sales.totalRevenue.toFixed(2)}` : "...",
+      note: "Collected through online and manual payments",
+    },
+    {
+      label: "Pending Orders",
+      value: summary ? String(summary.sales.pendingOrders) : "...",
+      note: "Orders still waiting for action",
+    },
+    {
+      label: "Delivered Trips",
+      value: summary ? String(summary.delivery.deliveredTrips) : "...",
+      note: "Completed truck trips so far",
+    },
+  ];
 
   return (
     <div>
@@ -39,50 +73,46 @@ const ManagerDashboard = () => {
         <h1 className="text-2xl font-bold text-stone-900">
           Welcome back, {user?.name?.split(" ")[0]}
         </h1>
-        <p className="text-stone-500 mt-1">
-          Manage materials and prepare the next operational modules for orders and stock flow.
+        <p className="mt-1 text-stone-500">
+          Keep operations moving with live summaries for stock, deliveries, invoices, and payments.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {stats.map((stat) => (
-          <div
-            key={stat.label}
-            className="bg-white border border-stone-200 rounded-xl p-5"
-          >
-            <p className="text-sm text-stone-500 mb-1">{stat.label}</p>
+          <div key={stat.label} className="rounded-xl border border-stone-200 bg-white p-5">
+            <p className="mb-1 text-sm text-stone-500">{stat.label}</p>
             <p className="text-2xl font-semibold text-stone-900">{stat.value}</p>
-            <p className="text-sm text-stone-500 mt-1">{stat.note}</p>
+            <p className="mt-1 text-sm text-stone-500">{stat.note}</p>
           </div>
         ))}
       </div>
 
       <div className="mb-8">
-        <h2 className="text-lg font-semibold text-stone-900 mb-4">Quick Actions</h2>
-        <div className="grid sm:grid-cols-2 gap-4">
+        <h2 className="mb-4 text-lg font-semibold text-stone-900">Quick Actions</h2>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {actions.map((action) => (
             <Link
               key={action.path}
               to={action.path}
-              className="bg-white border border-stone-200 rounded-xl p-5 hover:border-teal-300 hover:shadow-sm transition-all"
+              className="rounded-xl border border-stone-200 bg-white p-5 transition-all hover:border-teal-300 hover:shadow-sm"
             >
               <h3 className="font-medium text-stone-900">{action.title}</h3>
-              <p className="text-sm text-stone-500 mt-1">{action.desc}</p>
+              <p className="mt-1 text-sm text-stone-500">{action.desc}</p>
             </Link>
           ))}
         </div>
       </div>
 
-      <div className="bg-stone-50 border border-stone-200 rounded-xl p-5">
+      <div className="rounded-xl border border-stone-200 bg-stone-50 p-5">
         <div className="flex items-start gap-3">
-          <svg className="w-5 h-5 text-stone-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="mt-0.5 h-5 w-5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div>
             <p className="text-sm font-medium text-stone-700">Manager Workspace</p>
-            <p className="text-sm text-stone-500 mt-1">
-              This dashboard now shares the same sidebar layout as the rest of the manager area.
-              Orders, production, deliveries, invoices, and payments are the next modules to add.
+            <p className="mt-1 text-sm text-stone-500">
+              Use delivery, invoices, and payments together to move approved orders all the way to completion.
             </p>
           </div>
         </div>

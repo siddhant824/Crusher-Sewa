@@ -18,8 +18,12 @@ import TrucksManagement from "../pages/TrucksManagement.jsx";
 import AddTruck from "../pages/AddTruck.jsx";
 import Materials from "../pages/contractor/Materials.jsx";
 import Orders from "../pages/contractor/Orders.jsx";
+import PaymentHistory from "../pages/contractor/PaymentHistory.jsx";
 import Profile from "../pages/contractor/Profile.jsx";
 import PaymentReturn from "../pages/PaymentReturn.jsx";
+import PaymentManagement from "../pages/PaymentManagement.jsx";
+import InvoicesManagement from "../pages/InvoicesManagement.jsx";
+import InvoiceView from "../pages/InvoiceView.jsx";
 import PrivateRoute from "./PrivateRoute.jsx";
 
 const AppRoutes = () => (
@@ -53,6 +57,9 @@ const AppRoutes = () => (
       <Route path="/admin/materials/add" element={<AddMaterial />} />
       <Route path="/admin/materials" element={<ManageMaterials />} />
       <Route path="/admin/orders" element={<OrdersManagement />} />
+      <Route path="/admin/payments" element={<PaymentManagement />} />
+      <Route path="/admin/invoices" element={<InvoicesManagement />} />
+      <Route path="/admin/invoices/:id" element={<InvoiceView />} />
       <Route path="/admin/delivery" element={<DeliveryManagement />} />
       <Route path="/admin/trucks" element={<TrucksManagement />} />
       <Route path="/admin/trucks/add" element={<AddTruck />} />
@@ -77,6 +84,9 @@ const AppRoutes = () => (
       <Route path="/manager/materials/add" element={<AddMaterial />} />
       <Route path="/manager/materials" element={<ManageMaterials />} />
       <Route path="/manager/orders" element={<OrdersManagement />} />
+      <Route path="/manager/payments" element={<PaymentManagement />} />
+      <Route path="/manager/invoices" element={<InvoicesManagement />} />
+      <Route path="/manager/invoices/:id" element={<InvoiceView />} />
       <Route path="/manager/delivery" element={<DeliveryManagement />} />
       <Route path="/manager/trucks" element={<TrucksManagement />} />
       <Route path="/manager/trucks/add" element={<AddTruck />} />
@@ -99,6 +109,8 @@ const AppRoutes = () => (
     >
       <Route path="/contractor/materials" element={<Materials />} />
       <Route path="/contractor/orders" element={<Orders />} />
+      <Route path="/contractor/payments" element={<PaymentHistory />} />
+      <Route path="/contractor/invoices/:id" element={<InvoiceView />} />
       <Route path="/contractor/profile" element={<Profile />} />
     </Route>
   </Routes>

@@ -39,6 +39,16 @@ const formatDateTime = (value) => {
   return new Date(value).toLocaleString();
 };
 
+const formatTruckOptionLabel = (truck) => {
+  const numericCapacity = Number(truck.capacity);
+  const capacityLabel =
+    Number.isFinite(numericCapacity) && numericCapacity > 0
+      ? ` - Capacity: ${numericCapacity}`
+      : "";
+
+  return `${truck.name} (${truck.plateNumber})${capacityLabel}`;
+};
+
 const DeliveryManagement = () => {
   const [orders, setOrders] = useState([]);
   const [trucks, setTrucks] = useState([]);
@@ -602,10 +612,10 @@ const DeliveryManagement = () => {
                             Material
                           </th>
                           <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
-                            Quantity
-                          </th>
-                          <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
                             Truck
+                          </th>
+                            <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                            Quantity
                           </th>
                           <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
                             Status
@@ -745,7 +755,7 @@ const DeliveryManagement = () => {
                           selectedOrder.deliveryTrips.find((trip) => trip._id === editingTripId)?.truck
                       ).map((truck) => (
                         <option key={truck._id} value={truck._id}>
-                          {truck.name} ({truck.plateNumber})
+                          {formatTruckOptionLabel(truck)}
                         </option>
                       ))}
                     </select>
@@ -836,16 +846,6 @@ const DeliveryManagement = () => {
                         );
                       })}
                     </select>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={getTripForm(selectedOrder._id).deliveredQuantity}
-                      onChange={(e) =>
-                        handleTripFormChange(selectedOrder._id, "deliveredQuantity", e.target.value)
-                      }
-                      placeholder="Quantity"
-                      className="rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900"
-                    />
                     <select
                       value={getTripForm(selectedOrder._id).truckId}
                       onChange={(e) =>
@@ -856,10 +856,20 @@ const DeliveryManagement = () => {
                       <option value="">Select truck</option>
                       {getAvailableTrucks(selectedOrder._id).map((truck) => (
                         <option key={truck._id} value={truck._id}>
-                          {truck.name} ({truck.plateNumber})
+                          {formatTruckOptionLabel(truck)}
                         </option>
                       ))}
                     </select>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={getTripForm(selectedOrder._id).deliveredQuantity}
+                      onChange={(e) =>
+                        handleTripFormChange(selectedOrder._id, "deliveredQuantity", e.target.value)
+                      }
+                      placeholder="Quantity"
+                      className="rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900"
+                    />
                     <select
                       value={getTripForm(selectedOrder._id).status}
                       onChange={(e) =>

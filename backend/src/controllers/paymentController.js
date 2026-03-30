@@ -364,18 +364,32 @@ export const getAllPayments = async (req, res) => {
 
 export const getPaymentSummary = async (_req, res) => {
   try {
-    const payments = await Payment.find();
-    const totalCollected = payments
+    const [payments, orders] = await Promise.all([Payment.find(), Order.find()]);
+    const completedPayments = payments
       .filter((payment) => payment.status === "COMPLETE" || payment.status === "PARTIAL_REFUND")
+      .reduce((sum, payment) => sum + Number(payment.amount), 0);
+    const unpaidAmountTotal = orders
+      .filter((order) => order.paymentStatus === "UNPAID")
+      .reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
+    const partialPaymentTotal = payments
+      .filter((payment) =>
+        ["COMPLETE", "PARTIAL_REFUND"].includes(payment.status) &&
+        orders.some(
+          (order) =>
+            String(order._id) === String(payment.order) && order.paymentStatus === "PARTIAL"
+        )
+      )
       .reduce((sum, payment) => sum + Number(payment.amount), 0);
 
     return res.json({
       summary: {
         totalTransactions: payments.length,
-        totalCollected: parseAmount(totalCollected || 0),
+        totalCollected: parseAmount(completedPayments || 0),
         completePayments: payments.filter((payment) => payment.status === "COMPLETE").length,
         pendingPayments: payments.filter((payment) => payment.status === "PENDING").length,
         failedPayments: payments.filter((payment) => payment.status === "FAILED").length,
+        unpaidAmountTotal: parseAmount(unpaidAmountTotal || 0),
+        partialPaymentTotal: parseAmount(partialPaymentTotal || 0),
       },
     });
   } catch (err) {

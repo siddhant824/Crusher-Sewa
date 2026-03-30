@@ -169,12 +169,12 @@ const PaymentManagement = () => {
             <p className="mt-2 text-2xl font-semibold text-stone-900">Rs. {summary.totalCollected.toFixed(2)}</p>
           </div>
           <div className="rounded-xl border border-stone-200 bg-white p-5">
-            <p className="text-sm text-stone-500">Pending Payments</p>
-            <p className="mt-2 text-2xl font-semibold text-stone-900">{summary.pendingPayments}</p>
+            <p className="text-sm text-stone-500">Unpaid Amount</p>
+            <p className="mt-2 text-2xl font-semibold text-stone-900">Rs. {summary.unpaidAmountTotal.toFixed(2)}</p>
           </div>
           <div className="rounded-xl border border-stone-200 bg-white p-5">
-            <p className="text-sm text-stone-500">Failed Payments</p>
-            <p className="mt-2 text-2xl font-semibold text-stone-900">{summary.failedPayments}</p>
+            <p className="text-sm text-stone-500">Partial Payment Total</p>
+            <p className="mt-2 text-2xl font-semibold text-stone-900">Rs. {summary.partialPaymentTotal.toFixed(2)}</p>
           </div>
         </div>
       )}

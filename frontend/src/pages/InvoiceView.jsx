@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { getInvoiceById } from "../services/invoicesApi.js";
 import { useAuth } from "../hooks/useAuth.js";
+import { downloadInvoicePdf } from "../utils/invoicePdf.js";
 
 const InvoiceView = () => {
   const { id } = useParams();
@@ -46,6 +47,13 @@ const InvoiceView = () => {
           </p>
         </div>
         <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => downloadInvoicePdf(invoice)}
+            className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-800"
+          >
+            Download PDF
+          </button>
           <button
             type="button"
             onClick={() => window.print()}

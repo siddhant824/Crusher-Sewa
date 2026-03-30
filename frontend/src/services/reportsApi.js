@@ -16,8 +16,13 @@ const parseResponse = async (res) => {
   return data;
 };
 
-export const getReportSummary = async () => {
-  const res = await fetch(`${apiBase}/api/reports/summary`, {
+export const getReportSummary = async ({ startDate = "", endDate = "" } = {}) => {
+  const params = new URLSearchParams();
+  if (startDate) params.set("startDate", startDate);
+  if (endDate) params.set("endDate", endDate);
+
+  const query = params.toString();
+  const res = await fetch(`${apiBase}/api/reports/summary${query ? `?${query}` : ""}`, {
     method: "GET",
     headers: getAuthHeaders(),
   });

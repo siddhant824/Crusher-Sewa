@@ -20,6 +20,9 @@ const AdminLayout = () => {
     if (path.includes("/trucks") && location.pathname.includes("/trucks")) {
       return location.pathname.startsWith(basePath + "/trucks");
     }
+    if (path.includes("/reports") && location.pathname.includes("/reports")) {
+      return location.pathname.startsWith(basePath + "/reports");
+    }
     if (path.includes("/payments") && location.pathname.includes("/payments")) {
       return location.pathname.startsWith(basePath + "/payments");
     }
@@ -39,6 +42,7 @@ const AdminLayout = () => {
     { path: `${basePath}/orders`, label: "Orders", icon: "clipboard", show: true },
     { path: `${basePath}/delivery`, label: "Delivery", icon: "truck", show: true },
     { path: `${basePath}/trucks`, label: "Trucks", icon: "truck", show: true },
+    { path: `${basePath}/reports`, label: "Reports", icon: "chart", show: true },
     { path: `${basePath}/payments`, label: "Payments", icon: "wallet", show: true },
     { path: `${basePath}/invoices`, label: "Invoices", icon: "document", show: true },
     { path: `${basePath}/stock`, label: "Stock Control", icon: "chart", show: true },

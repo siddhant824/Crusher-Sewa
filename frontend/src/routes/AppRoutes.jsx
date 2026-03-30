@@ -24,6 +24,7 @@ import PaymentReturn from "../pages/PaymentReturn.jsx";
 import PaymentManagement from "../pages/PaymentManagement.jsx";
 import InvoicesManagement from "../pages/InvoicesManagement.jsx";
 import InvoiceView from "../pages/InvoiceView.jsx";
+import ReportsOverview from "../pages/ReportsOverview.jsx";
 import PrivateRoute from "./PrivateRoute.jsx";
 
 const AppRoutes = () => (
@@ -57,6 +58,7 @@ const AppRoutes = () => (
       <Route path="/admin/materials/add" element={<AddMaterial />} />
       <Route path="/admin/materials" element={<ManageMaterials />} />
       <Route path="/admin/orders" element={<OrdersManagement />} />
+      <Route path="/admin/reports" element={<ReportsOverview />} />
       <Route path="/admin/payments" element={<PaymentManagement />} />
       <Route path="/admin/invoices" element={<InvoicesManagement />} />
       <Route path="/admin/invoices/:id" element={<InvoiceView />} />
@@ -84,6 +86,7 @@ const AppRoutes = () => (
       <Route path="/manager/materials/add" element={<AddMaterial />} />
       <Route path="/manager/materials" element={<ManageMaterials />} />
       <Route path="/manager/orders" element={<OrdersManagement />} />
+      <Route path="/manager/reports" element={<ReportsOverview />} />
       <Route path="/manager/payments" element={<PaymentManagement />} />
       <Route path="/manager/invoices" element={<InvoicesManagement />} />
       <Route path="/manager/invoices/:id" element={<InvoiceView />} />

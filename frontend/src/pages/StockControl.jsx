@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { getMaterials } from "../services/materialsApi.js";
 import {
   createManualAdjustment,
   createProductionEntry,
   getInventoryLogs,
-  getProductionLogs,
 } from "../services/stockApi.js";
 
 const changeTypeStyles = {
@@ -14,10 +13,12 @@ const changeTypeStyles = {
   ORDER_APPROVAL: "bg-sky-50 text-sky-700 border-sky-200",
 };
 
+const formatQuantity = (value) => Number(value || 0).toFixed(2);
+const LOGS_PER_PAGE = 10;
+
 const StockControl = () => {
   const [materials, setMaterials] = useState([]);
   const [inventoryLogs, setInventoryLogs] = useState([]);
-  const [productionLogs, setProductionLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [productionSubmitting, setProductionSubmitting] = useState(false);
   const [adjustmentSubmitting, setAdjustmentSubmitting] = useState(false);
@@ -32,24 +33,38 @@ const StockControl = () => {
     quantityChange: "",
     note: "",
   });
+  const [inventoryFilters, setInventoryFilters] = useState({
+    materialId: "ALL",
+    changeType: "ALL",
+    fromDate: "",
+    toDate: "",
+    page: 1,
+  });
 
   useEffect(() => {
     loadData();
   }, []);
 
+  useEffect(() => {
+    setInventoryFilters((current) => ({ ...current, page: 1 }));
+  }, [
+    inventoryFilters.materialId,
+    inventoryFilters.changeType,
+    inventoryFilters.fromDate,
+    inventoryFilters.toDate,
+  ]);
+
   const loadData = async () => {
     setLoading(true);
     try {
-      const [materialsData, inventoryData, productionData] = await Promise.all([
+      const [materialsData, inventoryData] = await Promise.all([
         getMaterials(),
         getInventoryLogs(),
-        getProductionLogs(),
       ]);
 
       const fetchedMaterials = materialsData.materials || [];
       setMaterials(fetchedMaterials);
       setInventoryLogs(inventoryData.logs || []);
-      setProductionLogs(productionData.logs || []);
 
       if (fetchedMaterials.length > 0) {
         setProductionForm((current) => ({
@@ -67,6 +82,39 @@ const StockControl = () => {
       setLoading(false);
     }
   };
+
+  const selectedProductionMaterial = materials.find(
+    (material) => material._id === productionForm.materialId
+  );
+  const selectedAdjustmentMaterial = materials.find(
+    (material) => material._id === adjustmentForm.materialId
+  );
+
+  const filteredInventoryLogs = useMemo(() => {
+    return inventoryLogs.filter((log) => {
+      const logDate = String(log.createdAt).slice(0, 10);
+      const materialMatch =
+        inventoryFilters.materialId === "ALL" ||
+        String(log.material?._id) === inventoryFilters.materialId;
+      const typeMatch =
+        inventoryFilters.changeType === "ALL" ||
+        log.changeType === inventoryFilters.changeType;
+      const fromMatch = !inventoryFilters.fromDate || logDate >= inventoryFilters.fromDate;
+      const toMatch = !inventoryFilters.toDate || logDate <= inventoryFilters.toDate;
+
+      return materialMatch && typeMatch && fromMatch && toMatch;
+    });
+  }, [inventoryLogs, inventoryFilters]);
+
+  const inventoryPageCount = Math.max(
+    1,
+    Math.ceil(filteredInventoryLogs.length / LOGS_PER_PAGE)
+  );
+
+  const paginatedInventoryLogs = useMemo(() => {
+    const startIndex = (inventoryFilters.page - 1) * LOGS_PER_PAGE;
+    return filteredInventoryLogs.slice(startIndex, startIndex + LOGS_PER_PAGE);
+  }, [filteredInventoryLogs, inventoryFilters.page]);
 
   const handleProductionSubmit = async (e) => {
     e.preventDefault();
@@ -117,158 +165,325 @@ const StockControl = () => {
   }
 
   return (
-    <div>
-      <div className="mb-8">
+    <div className="space-y-8">
+      <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
         <h1 className="text-2xl font-bold text-stone-900">Stock Control</h1>
-        <p className="text-stone-500 mt-1">
-          Record production, apply manual adjustments, and review stock history.
+        <p className="mt-2 max-w-2xl text-sm text-stone-500">
+          Monitor current stock, record daily production, and handle corrections from one simpler screen.
         </p>
       </div>
 
-      <div className="grid xl:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white border border-stone-200 rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-stone-900 mb-4">Production Entry</h2>
-          <form onSubmit={handleProductionSubmit} className="space-y-4">
-            <select
-              value={productionForm.materialId}
-              onChange={(e) => setProductionForm((current) => ({ ...current, materialId: e.target.value }))}
-              className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
-            >
-              {materials.map((material) => (
-                <option key={material._id} value={material._id}>
-                  {material.name} (stock: {material.stock})
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              min="0.01"
-              step="0.01"
-              value={productionForm.quantityProduced}
-              onChange={(e) => setProductionForm((current) => ({ ...current, quantityProduced: e.target.value }))}
-              placeholder="Quantity produced"
-              className="w-full px-3 py-2 border border-stone-300 rounded-lg"
-              required
-            />
-            <input
-              type="date"
-              value={productionForm.productionDate}
-              onChange={(e) => setProductionForm((current) => ({ ...current, productionDate: e.target.value }))}
-              className="w-full px-3 py-2 border border-stone-300 rounded-lg"
-              required
-            />
-            <textarea
-              value={productionForm.note}
-              onChange={(e) => setProductionForm((current) => ({ ...current, note: e.target.value }))}
-              placeholder="Optional note"
-              className="w-full px-3 py-2 border border-stone-300 rounded-lg min-h-24"
-            />
-            <button
-              type="submit"
-              disabled={productionSubmitting}
-              className="w-full px-4 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
-            >
-              {productionSubmitting ? "Saving..." : "Save Production Entry"}
-            </button>
-          </form>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-stone-900">Production Entry</h2>
+            <p className="mt-1 text-sm text-stone-500">
+              Use this when new crusher production increases stock.
+            </p>
+
+            <form onSubmit={handleProductionSubmit} className="mt-5 space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-stone-700">Material</label>
+                <select
+                  value={productionForm.materialId}
+                  onChange={(e) =>
+                    setProductionForm((current) => ({ ...current, materialId: e.target.value }))
+                  }
+                  className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2"
+                >
+                  {materials.map((material) => (
+                    <option key={material._id} value={material._id}>
+                      {material.name}
+                    </option>
+                  ))}
+                </select>
+                {selectedProductionMaterial ? (
+                  <p className="text-xs text-stone-500">
+                    Current stock: {formatQuantity(selectedProductionMaterial.stock)}{" "}
+                    {selectedProductionMaterial.unit}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-stone-700">Quantity Produced</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={productionForm.quantityProduced}
+                    onChange={(e) =>
+                      setProductionForm((current) => ({
+                        ...current,
+                        quantityProduced: e.target.value,
+                      }))
+                    }
+                    placeholder="e.g. 25"
+                    className="w-full rounded-lg border border-stone-300 px-3 py-2"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-stone-700">Production Date</label>
+                  <input
+                    type="date"
+                    value={productionForm.productionDate}
+                    onChange={(e) =>
+                      setProductionForm((current) => ({
+                        ...current,
+                        productionDate: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-stone-300 px-3 py-2"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-stone-700">Note</label>
+                <textarea
+                  value={productionForm.note}
+                  onChange={(e) =>
+                    setProductionForm((current) => ({ ...current, note: e.target.value }))
+                  }
+                  placeholder="Optional production note"
+                  className="min-h-24 w-full rounded-lg border border-stone-300 px-3 py-2"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={productionSubmitting}
+                className="w-full rounded-lg bg-teal-600 px-4 py-2.5 text-white hover:bg-teal-700 disabled:opacity-50"
+              >
+                {productionSubmitting ? "Saving..." : "Save Production Entry"}
+              </button>
+            </form>
         </div>
 
-        <div className="bg-white border border-stone-200 rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-stone-900 mb-4">Manual Stock Adjustment</h2>
-          <form onSubmit={handleAdjustmentSubmit} className="space-y-4">
-            <select
-              value={adjustmentForm.materialId}
-              onChange={(e) => setAdjustmentForm((current) => ({ ...current, materialId: e.target.value }))}
-              className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
-            >
-              {materials.map((material) => (
-                <option key={material._id} value={material._id}>
-                  {material.name} (stock: {material.stock})
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              step="0.01"
-              value={adjustmentForm.quantityChange}
-              onChange={(e) => setAdjustmentForm((current) => ({ ...current, quantityChange: e.target.value }))}
-              placeholder="Use positive to add, negative to reduce"
-              className="w-full px-3 py-2 border border-stone-300 rounded-lg"
-              required
-            />
-            <textarea
-              value={adjustmentForm.note}
-              onChange={(e) => setAdjustmentForm((current) => ({ ...current, note: e.target.value }))}
-              placeholder="Reason for adjustment"
-              className="w-full px-3 py-2 border border-stone-300 rounded-lg min-h-24"
-              required
-            />
-            <button
-              type="submit"
-              disabled={adjustmentSubmitting}
-              className="w-full px-4 py-2.5 bg-stone-900 text-white rounded-lg hover:bg-stone-800 disabled:opacity-50"
-            >
-              {adjustmentSubmitting ? "Applying..." : "Apply Adjustment"}
-            </button>
-          </form>
+        <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-stone-900">Manual Adjustment</h2>
+            <p className="mt-1 text-sm text-stone-500">
+              Use this only for corrections, wastage, or stock reconciliation.
+            </p>
+
+            <form onSubmit={handleAdjustmentSubmit} className="mt-5 space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-stone-700">Material</label>
+                <select
+                  value={adjustmentForm.materialId}
+                  onChange={(e) =>
+                    setAdjustmentForm((current) => ({ ...current, materialId: e.target.value }))
+                  }
+                  className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2"
+                >
+                  {materials.map((material) => (
+                    <option key={material._id} value={material._id}>
+                      {material.name}
+                    </option>
+                  ))}
+                </select>
+                {selectedAdjustmentMaterial ? (
+                  <p className="text-xs text-stone-500">
+                    Current stock: {formatQuantity(selectedAdjustmentMaterial.stock)}{" "}
+                    {selectedAdjustmentMaterial.unit}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-stone-700">Quantity Change</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={adjustmentForm.quantityChange}
+                  onChange={(e) =>
+                    setAdjustmentForm((current) => ({
+                      ...current,
+                      quantityChange: e.target.value,
+                    }))
+                  }
+                  placeholder="Use positive to add, negative to reduce"
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-stone-700">Reason</label>
+                <textarea
+                  value={adjustmentForm.note}
+                  onChange={(e) =>
+                    setAdjustmentForm((current) => ({ ...current, note: e.target.value }))
+                  }
+                  placeholder="Explain why this stock correction is needed"
+                  className="min-h-24 w-full rounded-lg border border-stone-300 px-3 py-2"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={adjustmentSubmitting}
+                className="w-full rounded-lg bg-stone-900 px-4 py-2.5 text-white hover:bg-stone-800 disabled:opacity-50"
+              >
+                {adjustmentSubmitting ? "Applying..." : "Apply Adjustment"}
+              </button>
+            </form>
         </div>
       </div>
 
-      <div className="grid xl:grid-cols-2 gap-6">
-        <div className="bg-white border border-stone-200 rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-stone-900 mb-4">Recent Inventory Logs</h2>
-          <div className="space-y-3 max-h-[32rem] overflow-y-auto">
-            {inventoryLogs.length === 0 ? (
-              <p className="text-sm text-stone-400">No inventory logs yet.</p>
-            ) : (
-              inventoryLogs.map((log) => (
-                <div key={log._id} className="border border-stone-100 rounded-lg p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-medium text-stone-900">{log.material?.name}</p>
-                      <p className="text-sm text-stone-500">
-                        {new Date(log.createdAt).toLocaleString()} by {log.updatedBy?.name}
-                      </p>
-                    </div>
-                    <span className={`inline-flex px-2.5 py-1 rounded-full border text-xs font-medium ${changeTypeStyles[log.changeType] || "bg-stone-50 text-stone-700 border-stone-200"}`}>
-                      {log.changeType}
-                    </span>
-                  </div>
-                  <p className={`text-sm font-medium mt-3 ${log.quantityChange >= 0 ? "text-teal-600" : "text-rose-600"}`}>
-                    {log.quantityChange >= 0 ? "+" : ""}{Number(log.quantityChange).toFixed(2)}
-                  </p>
-                  <p className="text-sm text-stone-500 mt-1">
-                    Stock: {log.stockBefore} {"->"} {log.stockAfter}
-                  </p>
-                  {log.note && <p className="text-sm text-stone-600 mt-2">{log.note}</p>}
-                </div>
-              ))
-            )}
-          </div>
+      <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-stone-900">Inventory Activity</h2>
+          <p className="mt-1 text-sm text-stone-500">
+            All production, manual adjustments, and stock deductions are recorded here.
+          </p>
         </div>
 
-        <div className="bg-white border border-stone-200 rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-stone-900 mb-4">Recent Production Logs</h2>
-          <div className="space-y-3 max-h-[32rem] overflow-y-auto">
-            {productionLogs.length === 0 ? (
-              <p className="text-sm text-stone-400">No production logs yet.</p>
-            ) : (
-              productionLogs.map((log) => (
-                <div key={log._id} className="border border-stone-100 rounded-lg p-4">
-                  <p className="font-medium text-stone-900">{log.material?.name}</p>
-                  <p className="text-sm text-stone-500 mt-1">
-                    Produced {Number(log.quantityProduced).toFixed(2)} {log.material?.unit} on{" "}
-                    {new Date(log.productionDate).toLocaleDateString()}
-                  </p>
-                  <p className="text-sm text-stone-500 mt-1">
-                    Entered by {log.createdBy?.name} at {new Date(log.createdAt).toLocaleString()}
-                  </p>
-                  {log.note && <p className="text-sm text-stone-600 mt-2">{log.note}</p>}
-                </div>
-              ))
-            )}
-          </div>
+        <div className="mb-4 grid gap-3 lg:grid-cols-4">
+          <select
+            value={inventoryFilters.materialId}
+            onChange={(e) =>
+              setInventoryFilters((current) => ({ ...current, materialId: e.target.value }))
+            }
+            className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm"
+          >
+            <option value="ALL">All Materials</option>
+            {materials.map((material) => (
+              <option key={material._id} value={material._id}>
+                {material.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={inventoryFilters.changeType}
+            onChange={(e) =>
+              setInventoryFilters((current) => ({ ...current, changeType: e.target.value }))
+            }
+            className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm"
+          >
+            <option value="ALL">All Types</option>
+            <option value="PRODUCTION">Production</option>
+            <option value="MANUAL_ADJUSTMENT">Manual Adjustment</option>
+            <option value="ORDER_APPROVAL">Order Approval</option>
+          </select>
+          <input
+            type="date"
+            value={inventoryFilters.fromDate}
+            onChange={(e) =>
+              setInventoryFilters((current) => ({ ...current, fromDate: e.target.value }))
+            }
+            className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+          />
+          <input
+            type="date"
+            value={inventoryFilters.toDate}
+            onChange={(e) =>
+              setInventoryFilters((current) => ({ ...current, toDate: e.target.value }))
+            }
+            className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+          />
         </div>
+
+        <div className="overflow-x-auto rounded-xl border border-stone-200">
+          {filteredInventoryLogs.length === 0 ? (
+            <div className="p-8 text-sm text-stone-400">No inventory logs yet.</div>
+          ) : (
+            <table className="w-full min-w-[980px]">
+              <thead className="bg-stone-50">
+                <tr className="border-b border-stone-200">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                    Material
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                    Change
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                    Stock Movement
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                    Type
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">
+                    Recorded
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {paginatedInventoryLogs.map((log) => (
+                  <tr key={log._id} className="align-top">
+                    <td className="px-4 py-3 text-sm font-medium text-stone-900">
+                      {log.material?.name}
+                    </td>
+                    <td className="px-4 py-3">
+                      <p
+                        className={`text-sm font-semibold ${
+                          Number(log.quantityChange) >= 0 ? "text-teal-600" : "text-rose-600"
+                        }`}
+                      >
+                        {Number(log.quantityChange) >= 0 ? "+" : ""}
+                        {formatQuantity(log.quantityChange)}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-stone-600">
+                      {formatQuantity(log.stockBefore)} {"->"} {formatQuantity(log.stockAfter)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
+                          changeTypeStyles[log.changeType] ||
+                          "bg-stone-50 text-stone-700 border-stone-200"
+                        }`}
+                      >
+                        {log.changeType.replaceAll("_", " ")}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-stone-500">
+                      <p>{new Date(log.createdAt).toLocaleDateString()}</p>
+                      <p className="mt-1 text-xs">by {log.updatedBy?.name}</p>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {filteredInventoryLogs.length > 0 ? (
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-stone-500">
+              Showing {(inventoryFilters.page - 1) * LOGS_PER_PAGE + 1}-
+              {Math.min(inventoryFilters.page * LOGS_PER_PAGE, filteredInventoryLogs.length)} of{" "}
+              {filteredInventoryLogs.length} logs
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={inventoryFilters.page === 1}
+                onClick={() =>
+                  setInventoryFilters((current) => ({ ...current, page: current.page - 1 }))
+                }
+                className="rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-700 disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="rounded-lg bg-stone-100 px-3 py-2 text-sm text-stone-700">
+                Page {inventoryFilters.page} of {inventoryPageCount}
+              </span>
+              <button
+                type="button"
+                disabled={inventoryFilters.page === inventoryPageCount}
+                onClick={() =>
+                  setInventoryFilters((current) => ({ ...current, page: current.page + 1 }))
+                }
+                className="rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-700 disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

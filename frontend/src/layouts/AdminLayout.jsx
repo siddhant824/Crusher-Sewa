@@ -14,9 +14,6 @@ const AdminLayout = () => {
     if (path.includes("/stock") && location.pathname.includes("/stock")) {
       return location.pathname.startsWith(basePath + "/stock");
     }
-    if (path.includes("/delivery") && location.pathname.includes("/delivery")) {
-      return location.pathname.startsWith(basePath + "/delivery");
-    }
     if (path.includes("/trucks") && location.pathname.includes("/trucks")) {
       return location.pathname.startsWith(basePath + "/trucks");
     }
@@ -40,7 +37,6 @@ const AdminLayout = () => {
     { path: `${basePath}/users`, label: "Manage Users", icon: "users", show: isAdmin },
     { path: `${basePath}/materials`, label: "Manage Materials", icon: "box", show: true },
     { path: `${basePath}/orders`, label: "Orders", icon: "clipboard", show: true },
-    { path: `${basePath}/delivery`, label: "Delivery", icon: "truck", show: true },
     { path: `${basePath}/trucks`, label: "Trucks", icon: "truck", show: true },
     { path: `${basePath}/reports`, label: "Reports", icon: "chart", show: true },
     { path: `${basePath}/payments`, label: "Payments", icon: "wallet", show: true },

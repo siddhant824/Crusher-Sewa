@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { getAllOrders, updateOrderStatus } from "../services/ordersApi.js";
 
@@ -22,10 +23,15 @@ const paymentStyles = {
 };
 
 const OrdersManagement = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const basePath = location.pathname.startsWith("/admin") ? "/admin" : "/manager";
+
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState(null);
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [expandedUsers, setExpandedUsers] = useState({});
 
   useEffect(() => {
     fetchOrders();
@@ -51,6 +57,10 @@ const OrdersManagement = () => {
       setOrders((current) =>
         current.map((order) => (order._id === orderId ? data.order : order))
       );
+
+      if (nextStatus === "APPROVED") {
+        navigate(`${basePath}/orders/${orderId}/delivery`);
+      }
     } catch (err) {
       toast.error(err.message || "Failed to update order");
     } finally {
@@ -66,6 +76,35 @@ const OrdersManagement = () => {
     return orders.filter((order) => order.orderStatus === statusFilter);
   }, [orders, statusFilter]);
 
+  const groupedOrders = useMemo(() => {
+    const groups = new Map();
+
+    filteredOrders.forEach((order) => {
+      const key = order.contractor?._id || order.contractor?.email || "unknown";
+      const existing = groups.get(key);
+
+      if (existing) {
+        existing.orders.push(order);
+        return;
+      }
+
+      groups.set(key, {
+        key,
+        contractor: order.contractor,
+        orders: [order],
+      });
+    });
+
+    return Array.from(groups.values());
+  }, [filteredOrders]);
+
+  const toggleUserExpanded = (groupKey) => {
+    setExpandedUsers((current) => ({
+      ...current,
+      [groupKey]: !current[groupKey],
+    }));
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -78,8 +117,8 @@ const OrdersManagement = () => {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-stone-900">Orders</h1>
-        <p className="text-stone-500 mt-1">
-          Review contractor orders and update approval status.
+        <p className="mt-1 text-stone-500">
+          Review orders by contractor, then open delivery for the exact order you want to dispatch.
         </p>
       </div>
 
@@ -87,7 +126,7 @@ const OrdersManagement = () => {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-medium text-stone-900">Filter by status</p>
-            <p className="text-xs text-stone-500 mt-1">
+            <p className="mt-1 text-xs text-stone-500">
               {filteredOrders.length} of {orders.length} orders shown
             </p>
           </div>
@@ -116,120 +155,261 @@ const OrdersManagement = () => {
       </div>
 
       {orders.length === 0 ? (
-        <div className="bg-white border border-stone-200 rounded-xl p-12 text-center">
-          <p className="text-stone-600 font-medium">No orders yet</p>
-          <p className="text-sm text-stone-400 mt-1">
+        <div className="rounded-xl border border-stone-200 bg-white p-12 text-center">
+          <p className="font-medium text-stone-600">No orders yet</p>
+          <p className="mt-1 text-sm text-stone-400">
             Contractor orders will appear here once they are placed.
           </p>
         </div>
-      ) : filteredOrders.length === 0 ? (
-        <div className="bg-white border border-stone-200 rounded-xl p-12 text-center">
-          <p className="text-stone-600 font-medium">No {statusFilter.toLowerCase()} orders found</p>
-          <p className="text-sm text-stone-400 mt-1">
+      ) : groupedOrders.length === 0 ? (
+        <div className="rounded-xl border border-stone-200 bg-white p-12 text-center">
+          <p className="font-medium text-stone-600">
+            No {statusFilter.toLowerCase()} orders found
+          </p>
+          <p className="mt-1 text-sm text-stone-400">
             Try switching the filter to view other orders.
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {filteredOrders.map((order) => (
-            <div key={order._id} className="bg-white border border-stone-200 rounded-xl p-5">
-              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-stone-900">
-                    {order.contractor?.name || "Contractor"}
-                  </h2>
-                  <p className="text-sm text-stone-500">{order.contractor?.email}</p>
-                  <p className="text-xs text-stone-400 mt-1">
-                    Placed on {new Date(order.createdAt).toLocaleString()}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <span className={`inline-flex px-2.5 py-1 rounded-full border text-xs font-medium ${statusStyles[order.orderStatus] || statusStyles.PENDING}`}>
-                    {order.orderStatus}
-                  </span>
-                  <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${deliveryStyles[order.deliveryStatus] || deliveryStyles.PENDING}`}>
-                    Delivery: {order.deliveryStatus}
-                  </span>
-                  <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${paymentStyles[order.paymentStatus] || paymentStyles.UNPAID}`}>
-                    Payment: {order.paymentStatus}
-                  </span>
-                </div>
-              </div>
+        <div className="space-y-6">
+          {groupedOrders.map((group) => (
+            <section
+              key={group.key}
+              className="overflow-hidden rounded-xl border border-stone-200 bg-white"
+            >
+              {(() => {
+                const isExpanded = expandedUsers[group.key] ?? false;
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-stone-500 border-b border-stone-100">
-                      <th className="py-2">Material</th>
-                      <th className="py-2">Qty</th>
-                      <th className="py-2">Rate</th>
-                      <th className="py-2 text-right">Subtotal</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {order.items.map((item) => (
-                      <tr key={`${order._id}-${item.material?._id || item.materialName}`} className="border-b border-stone-50 last:border-b-0">
-                        <td className="py-3 text-stone-900">{item.materialName}</td>
-                        <td className="py-3 text-stone-600">{item.quantity} {item.unit}</td>
-                        <td className="py-3 text-stone-600">Rs. {item.ratePerCuMetre.toFixed(2)}</td>
-                        <td className="py-3 text-right text-stone-900">Rs. {item.subtotal.toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                  <p className="text-lg font-semibold text-stone-900">
-                    Total: Rs. {order.totalAmount.toFixed(2)}
-                  </p>
-                  {order.approvedBy && (
-                    <p className="text-xs text-stone-500 mt-1">
-                      Reviewed by {order.approvedBy.name} on {new Date(order.approvedAt).toLocaleString()}
-                    </p>
-                  )}
-                </div>
-                {order.orderStatus === "PENDING" ? (
-                  <div className="flex gap-2">
+                return (
+                  <>
+              <div className="border-b border-stone-200 bg-gradient-to-r from-stone-50 to-white px-5 py-5">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <div className="inline-flex rounded-full border border-stone-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
+                      Contractor
+                    </div>
+                    <h2 className="mt-3 text-xl font-semibold text-stone-900">
+                      {group.contractor?.name || "Contractor"}
+                    </h2>
+                    <p className="mt-1 text-sm text-stone-500">{group.contractor?.email}</p>
+                  </div>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-xl border border-stone-200 bg-white px-4 py-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-400">
+                        Orders
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-stone-900">
+                        {group.orders.length}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-stone-200 bg-white px-4 py-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-400">
+                        Approved
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-stone-900">
+                        {group.orders.filter((order) => order.orderStatus === "APPROVED").length}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-stone-200 bg-white px-4 py-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-400">
+                        Pending
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-stone-900">
+                        {group.orders.filter((order) => order.orderStatus === "PENDING").length}
+                      </p>
+                    </div>
                     <button
                       type="button"
-                      disabled={actingId === order._id}
-                      onClick={() => handleStatusUpdate(order._id, "APPROVED")}
-                      className="px-4 py-2 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
+                      onClick={() => toggleUserExpanded(group.key)}
+                      className="inline-flex items-center justify-center rounded-lg border border-stone-300 bg-white px-4 py-3 text-sm font-medium text-stone-700 hover:bg-stone-50"
                     >
-                      Approve
-                    </button>
-                    <button
-                      type="button"
-                      disabled={actingId === order._id}
-                      onClick={() => handleStatusUpdate(order._id, "REJECTED")}
-                      className="px-4 py-2 text-sm bg-rose-50 text-rose-700 rounded-lg hover:bg-rose-100 disabled:opacity-50"
-                    >
-                      Reject
+                      {isExpanded ? "Show Less" : "Expand More"}
                     </button>
                   </div>
-                ) : (
-                  <div className="flex items-center justify-end">
-                    <span
-                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${
-                        order.orderStatus === "APPROVED"
-                          ? "border-teal-200 bg-teal-50 text-teal-700"
-                          : "border-rose-200 bg-rose-50 text-rose-700"
-                      }`}
-                    >
-                      <span
-                        className={`h-2 w-2 rounded-full ${
-                          order.orderStatus === "APPROVED" ? "bg-teal-500" : "bg-rose-500"
-                        }`}
-                      ></span>
-                      {order.orderStatus === "APPROVED" ? "Approved" : "Rejected"}
-                    </span>
-                  </div>
-                )}
+                </div>
               </div>
 
-            </div>
+              {isExpanded ? (
+              <div className="space-y-4 bg-stone-50/70 p-4">
+                {group.orders.map((order, index) => (
+                  <div
+                    key={order._id}
+                    className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm ring-1 ring-black/[0.02]"
+                  >
+                    <div className="mb-4 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                      <div>
+                        <div className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-500">
+                          <span>Order {index + 1}</span>
+                          <span className="h-1 w-1 rounded-full bg-stone-300"></span>
+                          <span className="normal-case tracking-normal text-stone-600">
+                            {group.contractor?.name || "Contractor"}
+                          </span>
+                        </div>
+                        <p className="mt-3 text-base font-semibold text-stone-900">
+                          Placed on {new Date(order.createdAt).toLocaleString()}
+                        </p>
+                        {order.approvedBy ? (
+                          <p className="mt-1 text-xs text-stone-500">
+                            Reviewed by {order.approvedBy.name} on{" "}
+                            {new Date(order.approvedAt).toLocaleString()}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <span
+                          className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
+                            statusStyles[order.orderStatus] || statusStyles.PENDING
+                          }`}
+                        >
+                          {order.orderStatus}
+                        </span>
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                            deliveryStyles[order.deliveryStatus] || deliveryStyles.PENDING
+                          }`}
+                        >
+                          Delivery: {order.deliveryStatus}
+                        </span>
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                            paymentStyles[order.paymentStatus] || paymentStyles.UNPAID
+                          }`}
+                        >
+                          Payment: {order.paymentStatus}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mb-4 grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-400">
+                          Items
+                        </p>
+                        <p className="mt-2 text-base font-semibold text-stone-900">
+                          {order.items.length} material{order.items.length === 1 ? "" : "s"}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-400">
+                          Delivery
+                        </p>
+                        <p className="mt-2 text-base font-semibold text-stone-900">
+                          {order.deliveryStatus.replaceAll("_", " ")}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-400">
+                          Total
+                        </p>
+                        <p className="mt-2 text-base font-semibold text-stone-900">
+                          Rs. {order.totalAmount.toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto rounded-xl border border-stone-200">
+                      <table className="w-full text-sm">
+                        <thead className="bg-stone-50">
+                          <tr className="border-b border-stone-200 text-left text-stone-500">
+                            <th className="px-4 py-3">Material</th>
+                            <th className="px-4 py-3">Qty</th>
+                            <th className="px-4 py-3">Rate</th>
+                            <th className="px-4 py-3 text-right">Subtotal</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {order.items.map((item, itemIndex) => (
+                            <tr
+                              key={`${order._id}-${item.material?._id || item.materialName}`}
+                              className="border-b border-stone-50 last:border-b-0"
+                            >
+                              <td className="px-4 py-3 text-stone-900">
+                                <div className="flex items-center gap-3">
+                                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-600">
+                                    {itemIndex + 1}
+                                  </span>
+                                  <span>{item.materialName}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-stone-600">
+                                {item.quantity} {item.unit}
+                              </td>
+                              <td className="px-4 py-3 text-stone-600">
+                                Rs. {item.ratePerCuMetre.toFixed(2)}
+                              </td>
+                              <td className="px-4 py-3 text-right text-stone-900">
+                                Rs. {item.subtotal.toFixed(2)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="mt-4 flex flex-col gap-3 border-t border-stone-100 pt-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-400">
+                          Order Total
+                        </p>
+                        <p className="mt-1 text-2xl font-semibold text-stone-900">
+                          Rs. {order.totalAmount.toFixed(2)}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap justify-end gap-2">
+                        {order.orderStatus === "PENDING" ? (
+                          <>
+                            <button
+                              type="button"
+                              disabled={actingId === order._id}
+                              onClick={() => handleStatusUpdate(order._id, "APPROVED")}
+                              className="rounded-lg bg-teal-600 px-4 py-2 text-sm text-white hover:bg-teal-700 disabled:opacity-50"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              type="button"
+                              disabled={actingId === order._id}
+                              onClick={() => handleStatusUpdate(order._id, "REJECTED")}
+                              className="rounded-lg bg-rose-50 px-4 py-2 text-sm text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+                            >
+                              Reject
+                            </button>
+                          </>
+                        ) : null}
+
+                        {order.orderStatus === "APPROVED" ? (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`${basePath}/orders/${order._id}/delivery`)}
+                            className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
+                          >
+                            Manage Delivery
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              ) : (
+                <div className="flex items-center justify-between bg-stone-50/70 px-5 py-4 text-sm text-stone-500">
+                  <p>
+                    {group.orders.length} order{group.orders.length === 1 ? "" : "s"} hidden for this contractor.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => toggleUserExpanded(group.key)}
+                    className="font-medium text-stone-700 hover:text-stone-900"
+                  >
+                    View Orders
+                  </button>
+                </div>
+              )}
+                  </>
+                );
+              })()}
+            </section>
           ))}
         </div>
       )}

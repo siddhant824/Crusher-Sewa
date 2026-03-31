@@ -10,6 +10,8 @@ const ContractorLayout = () => {
   const navItems = [
     { path: "/contractor/materials", label: "Materials" },
     { path: "/contractor/orders", label: "My Orders" },
+    { path: "/contractor/deliveries", label: "Deliveries" },
+    { path: "/contractor/invoices", label: "Invoices" },
     { path: "/contractor/payments", label: "Payments" },
     { path: "/contractor/profile", label: "Profile" },
   ];

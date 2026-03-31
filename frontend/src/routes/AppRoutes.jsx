@@ -12,12 +12,14 @@ import AddMaterial from "../pages/admin/AddMaterial.jsx";
 import ManageMaterials from "../pages/admin/ManageMaterials.jsx";
 import ManagerDashboard from "../pages/ManagerDashboard.jsx";
 import OrdersManagement from "../pages/OrdersManagement.jsx";
-import StockControl from "../pages/StockControl.jsx";
 import DeliveryManagement from "../pages/DeliveryManagement.jsx";
+import StockControl from "../pages/StockControl.jsx";
 import TrucksManagement from "../pages/TrucksManagement.jsx";
 import AddTruck from "../pages/AddTruck.jsx";
 import Materials from "../pages/contractor/Materials.jsx";
 import Orders from "../pages/contractor/Orders.jsx";
+import DeliveryHistory from "../pages/contractor/DeliveryHistory.jsx";
+import Invoices from "../pages/contractor/Invoices.jsx";
 import PaymentHistory from "../pages/contractor/PaymentHistory.jsx";
 import Profile from "../pages/contractor/Profile.jsx";
 import PaymentReturn from "../pages/PaymentReturn.jsx";
@@ -58,11 +60,12 @@ const AppRoutes = () => (
       <Route path="/admin/materials/add" element={<AddMaterial />} />
       <Route path="/admin/materials" element={<ManageMaterials />} />
       <Route path="/admin/orders" element={<OrdersManagement />} />
+      <Route path="/admin/orders/:orderId/delivery" element={<DeliveryManagement />} />
       <Route path="/admin/reports" element={<ReportsOverview />} />
       <Route path="/admin/payments" element={<PaymentManagement />} />
       <Route path="/admin/invoices" element={<InvoicesManagement />} />
       <Route path="/admin/invoices/:id" element={<InvoiceView />} />
-      <Route path="/admin/delivery" element={<DeliveryManagement />} />
+      <Route path="/admin/delivery" element={<Navigate to="/admin/orders" replace />} />
       <Route path="/admin/trucks" element={<TrucksManagement />} />
       <Route path="/admin/trucks/add" element={<AddTruck />} />
       <Route path="/admin/stock" element={<StockControl />} />
@@ -86,11 +89,12 @@ const AppRoutes = () => (
       <Route path="/manager/materials/add" element={<AddMaterial />} />
       <Route path="/manager/materials" element={<ManageMaterials />} />
       <Route path="/manager/orders" element={<OrdersManagement />} />
+      <Route path="/manager/orders/:orderId/delivery" element={<DeliveryManagement />} />
       <Route path="/manager/reports" element={<ReportsOverview />} />
       <Route path="/manager/payments" element={<PaymentManagement />} />
       <Route path="/manager/invoices" element={<InvoicesManagement />} />
       <Route path="/manager/invoices/:id" element={<InvoiceView />} />
-      <Route path="/manager/delivery" element={<DeliveryManagement />} />
+      <Route path="/manager/delivery" element={<Navigate to="/manager/orders" replace />} />
       <Route path="/manager/trucks" element={<TrucksManagement />} />
       <Route path="/manager/trucks/add" element={<AddTruck />} />
       <Route path="/manager/stock" element={<StockControl />} />
@@ -112,6 +116,8 @@ const AppRoutes = () => (
     >
       <Route path="/contractor/materials" element={<Materials />} />
       <Route path="/contractor/orders" element={<Orders />} />
+      <Route path="/contractor/deliveries" element={<DeliveryHistory />} />
+      <Route path="/contractor/invoices" element={<Invoices />} />
       <Route path="/contractor/payments" element={<PaymentHistory />} />
       <Route path="/contractor/invoices/:id" element={<InvoiceView />} />
       <Route path="/contractor/profile" element={<Profile />} />

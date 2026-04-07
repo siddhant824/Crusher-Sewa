@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "../../hooks/useAuth.js";
 import { getMaterials, updateMaterial, deleteMaterial } from "../../services/materialsApi.js";
+
+const MATERIALS_PER_PAGE = 10;
 
 const ManageMaterials = () => {
   const { user } = useAuth();
@@ -18,6 +20,7 @@ const ManageMaterials = () => {
   const [editImageFile, setEditImageFile] = useState(null);
   const [editImagePreview, setEditImagePreview] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const isAdmin = user?.role === "ADMIN";
   const basePath = isAdmin ? "/admin" : "/manager";
@@ -148,6 +151,19 @@ const ManageMaterials = () => {
   };
 
   const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const totalPages = Math.max(1, Math.ceil(materials.length / MATERIALS_PER_PAGE));
+  const paginatedMaterials = useMemo(() => {
+    const startIndex = (currentPage - 1) * MATERIALS_PER_PAGE;
+    return materials.slice(startIndex, startIndex + MATERIALS_PER_PAGE);
+  }, [currentPage, materials]);
+  const pageStart = materials.length === 0 ? 0 : (currentPage - 1) * MATERIALS_PER_PAGE + 1;
+  const pageEnd = Math.min(currentPage * MATERIALS_PER_PAGE, materials.length);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   if (loading) {
     return (
@@ -194,7 +210,7 @@ const ManageMaterials = () => {
             <p className="text-sm text-stone-400 mt-1">Add your first material to get started</p>
           </div>
         ) : (
-          materials.map((material) => {
+          paginatedMaterials.map((material) => {
             const isEditing = editingId === material._id;
             const imageUrl = material.imageUrl
               ? material.imageUrl.startsWith("http")
@@ -332,6 +348,34 @@ const ManageMaterials = () => {
           })
         )}
       </div>
+      {materials.length > 0 && (
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-stone-500">
+            Showing {pageStart}-{pageEnd} of {materials.length} materials
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+              disabled={currentPage === 1}
+              className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <span className="rounded-lg bg-stone-100 px-3 py-2 text-sm font-medium text-stone-700">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -94,6 +94,9 @@ const paymentSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    successEmailSentAt: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );

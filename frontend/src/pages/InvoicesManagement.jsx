@@ -5,6 +5,8 @@ import { getAllOrders } from "../services/ordersApi.js";
 import { generateInvoice, getInvoices } from "../services/invoicesApi.js";
 import { useAuth } from "../hooks/useAuth.js";
 
+const INVOICES_PER_PAGE = 10;
+
 const InvoicesManagement = () => {
   const { user } = useAuth();
   const basePath = user?.role === "ADMIN" ? "/admin" : "/manager";
@@ -13,6 +15,7 @@ const InvoicesManagement = () => {
   const [selectedOrderId, setSelectedOrderId] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchData = async () => {
     setLoading(true);
@@ -35,6 +38,18 @@ const InvoicesManagement = () => {
     const invoiceOrderIds = new Set(invoices.map((invoice) => String(invoice.order?._id || invoice.order)));
     return orders.filter((order) => !invoiceOrderIds.has(String(order._id)));
   }, [invoices, orders]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [invoices]);
+
+  const totalPages = Math.max(1, Math.ceil(invoices.length / INVOICES_PER_PAGE));
+  const paginatedInvoices = useMemo(() => {
+    const startIndex = (currentPage - 1) * INVOICES_PER_PAGE;
+    return invoices.slice(startIndex, startIndex + INVOICES_PER_PAGE);
+  }, [currentPage, invoices]);
+  const pageStart = invoices.length === 0 ? 0 : (currentPage - 1) * INVOICES_PER_PAGE + 1;
+  const pageEnd = Math.min(currentPage * INVOICES_PER_PAGE, invoices.length);
 
   const handleGenerateInvoice = async () => {
     if (!selectedOrderId) {
@@ -108,7 +123,7 @@ const InvoicesManagement = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
-              {invoices.map((invoice) => (
+              {paginatedInvoices.map((invoice) => (
                 <tr key={invoice._id}>
                   <td className="px-5 py-4 font-medium text-stone-900">{invoice.invoiceNumber}</td>
                   <td className="px-5 py-4">
@@ -138,6 +153,34 @@ const InvoicesManagement = () => {
             </tbody>
           </table>
         </div>
+        {invoices.length > 0 && (
+          <div className="flex flex-col gap-3 border-t border-stone-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-stone-500">
+              Showing {pageStart}-{pageEnd} of {invoices.length} invoices
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+                disabled={currentPage === 1}
+                className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="rounded-lg bg-stone-100 px-3 py-2 text-sm font-medium text-stone-700">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

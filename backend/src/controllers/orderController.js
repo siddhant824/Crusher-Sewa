@@ -6,6 +6,7 @@ import {
   populateOrderWithDeliveriesQuery,
   refreshOrderDeliveryStatus,
 } from "../services/deliveryService.js";
+import { sendOrderApprovalEmail } from "../services/notificationService.js";
 
 export const createOrder = async (req, res) => {
   const { items } = req.body;
@@ -177,6 +178,21 @@ export const updateOrderStatus = async (req, res) => {
 
     const populatedOrder = await Order.findById(order._id).populate(populateOrderWithDeliveriesQuery);
     const orderWithTrips = await attachDeliveryTripsToOrders(populatedOrder);
+
+    if (orderStatus === "APPROVED" && !order.notificationMeta?.approvalEmailSentAt) {
+      try {
+        const sent = await sendOrderApprovalEmail(orderWithTrips);
+        if (sent) {
+          await Order.findByIdAndUpdate(order._id, {
+            $set: {
+              "notificationMeta.approvalEmailSentAt": new Date(),
+            },
+          });
+        }
+      } catch (emailErr) {
+        console.error("Failed to send order approval email:", emailErr.message);
+      }
+    }
 
     return res.json({
       order: orderWithTrips,

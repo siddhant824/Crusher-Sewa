@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { getUsers, updateUserStatus } from "../../services/adminApi.js";
 
+const USERS_PER_PAGE = 10;
+
 const ManageUsers = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -10,6 +12,7 @@ const ManageUsers = () => {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [updatingId, setUpdatingId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     fetchUsers();
@@ -50,6 +53,18 @@ const ManageUsers = () => {
 
     return filtered;
   }, [users, roleFilter, statusFilter, searchQuery]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [roleFilter, statusFilter, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / USERS_PER_PAGE));
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * USERS_PER_PAGE;
+    return filteredUsers.slice(startIndex, startIndex + USERS_PER_PAGE);
+  }, [currentPage, filteredUsers]);
+  const pageStart = filteredUsers.length === 0 ? 0 : (currentPage - 1) * USERS_PER_PAGE + 1;
+  const pageEnd = Math.min(currentPage * USERS_PER_PAGE, filteredUsers.length);
 
   const handleStatusToggle = async (userId, currentStatus) => {
     setUpdatingId(userId);
@@ -189,7 +204,7 @@ const ManageUsers = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
-                {filteredUsers.map((user) => {
+                {paginatedUsers.map((user) => {
                   const userId = user._id || user.id;
                   return (
                     <tr key={userId} className="hover:bg-stone-50">
@@ -239,6 +254,34 @@ const ManageUsers = () => {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+        {filteredUsers.length > 0 && (
+          <div className="flex flex-col gap-3 border-t border-stone-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-stone-500">
+              Showing {pageStart}-{pageEnd} of {filteredUsers.length} users
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+                disabled={currentPage === 1}
+                className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="rounded-lg bg-stone-100 px-3 py-2 text-sm font-medium text-stone-700">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
       </div>

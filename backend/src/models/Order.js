@@ -82,6 +82,19 @@ const orderSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    notificationMeta: {
+      approvalEmailSentAt: {
+        type: Date,
+      },
+      deliveryEmailSentAt: {
+        type: Date,
+      },
+      lastDeliveryEmailStatus: {
+        type: String,
+        enum: ["PENDING", "IN_PROGRESS", "PARTIALLY_DELIVERED", "DELIVERED", null],
+        default: null,
+      },
+    },
   },
   { timestamps: true }
 );

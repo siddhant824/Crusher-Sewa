@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { getAllOrders, updateOrderStatus } from "../services/ordersApi.js";
 
+const GROUPS_PER_PAGE = 10;
+
 const statusStyles = {
   PENDING: "bg-amber-50 text-amber-700 border-amber-200",
   APPROVED: "bg-teal-50 text-teal-700 border-teal-200",
@@ -32,6 +34,7 @@ const OrdersManagement = () => {
   const [actingId, setActingId] = useState(null);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [expandedUsers, setExpandedUsers] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     fetchOrders();
@@ -97,6 +100,18 @@ const OrdersManagement = () => {
 
     return Array.from(groups.values());
   }, [filteredOrders]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, orders]);
+
+  const totalPages = Math.max(1, Math.ceil(groupedOrders.length / GROUPS_PER_PAGE));
+  const paginatedGroups = useMemo(() => {
+    const startIndex = (currentPage - 1) * GROUPS_PER_PAGE;
+    return groupedOrders.slice(startIndex, startIndex + GROUPS_PER_PAGE);
+  }, [currentPage, groupedOrders]);
+  const pageStart = groupedOrders.length === 0 ? 0 : (currentPage - 1) * GROUPS_PER_PAGE + 1;
+  const pageEnd = Math.min(currentPage * GROUPS_PER_PAGE, groupedOrders.length);
 
   const toggleUserExpanded = (groupKey) => {
     setExpandedUsers((current) => ({
@@ -172,7 +187,7 @@ const OrdersManagement = () => {
         </div>
       ) : (
         <div className="space-y-6">
-          {groupedOrders.map((group) => (
+          {paginatedGroups.map((group) => (
             <section
               key={group.key}
               className="overflow-hidden rounded-xl border border-stone-200 bg-white"
@@ -411,6 +426,34 @@ const OrdersManagement = () => {
               })()}
             </section>
           ))}
+        </div>
+      )}
+      {groupedOrders.length > 0 && (
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-stone-500">
+            Showing {pageStart}-{pageEnd} of {groupedOrders.length} contractor groups
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+              disabled={currentPage === 1}
+              className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <span className="rounded-lg bg-stone-100 px-3 py-2 text-sm font-medium text-stone-700">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>

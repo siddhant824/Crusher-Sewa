@@ -8,6 +8,7 @@ import {
   populateOrderWithDeliveriesQuery,
   refreshOrderDeliveryStatus,
 } from "../services/deliveryService.js";
+import { sendDeliveryUpdateEmail } from "../services/notificationService.js";
 
 const getBusyTruckTrip = async (truckId, excludeTripId = null) => {
   const query = {
@@ -50,6 +51,8 @@ export const createDeliveryTrip = async (req, res) => {
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
+
+    const previousDeliveryStatus = order.deliveryStatus;
 
     if (order.orderStatus !== "APPROVED") {
       return res.status(400).json({
@@ -116,6 +119,25 @@ export const createDeliveryTrip = async (req, res) => {
     const populatedOrder = await Order.findById(orderId).populate(populateOrderWithDeliveriesQuery);
     const orderWithTrips = await attachDeliveryTripsToOrders(populatedOrder);
 
+    if (
+      orderWithTrips.deliveryStatus !== previousDeliveryStatus &&
+      orderWithTrips.deliveryStatus !== "PENDING"
+    ) {
+      try {
+        const sent = await sendDeliveryUpdateEmail(orderWithTrips, previousDeliveryStatus);
+        if (sent) {
+          await Order.findByIdAndUpdate(orderId, {
+            $set: {
+              "notificationMeta.deliveryEmailSentAt": new Date(),
+              "notificationMeta.lastDeliveryEmailStatus": orderWithTrips.deliveryStatus,
+            },
+          });
+        }
+      } catch (emailErr) {
+        console.error("Failed to send delivery update email:", emailErr.message);
+      }
+    }
+
     return res.status(201).json({
       deliveryTrip,
       order: orderWithTrips,
@@ -158,6 +180,8 @@ export const updateDeliveryTrip = async (req, res) => {
     if (!order) {
       return res.status(404).json({ message: "Related order not found" });
     }
+
+    const previousDeliveryStatus = order.deliveryStatus;
 
     const orderItem = order.items.find(
       (item) => String(item.material) === String(trip.material)
@@ -252,6 +276,25 @@ export const updateDeliveryTrip = async (req, res) => {
 
     const populatedOrder = await Order.findById(trip.order).populate(populateOrderWithDeliveriesQuery);
     const orderWithTrips = await attachDeliveryTripsToOrders(populatedOrder);
+
+    if (
+      orderWithTrips.deliveryStatus !== previousDeliveryStatus &&
+      orderWithTrips.deliveryStatus !== "PENDING"
+    ) {
+      try {
+        const sent = await sendDeliveryUpdateEmail(orderWithTrips, previousDeliveryStatus);
+        if (sent) {
+          await Order.findByIdAndUpdate(trip.order, {
+            $set: {
+              "notificationMeta.deliveryEmailSentAt": new Date(),
+              "notificationMeta.lastDeliveryEmailStatus": orderWithTrips.deliveryStatus,
+            },
+          });
+        }
+      } catch (emailErr) {
+        console.error("Failed to send delivery update email:", emailErr.message);
+      }
+    }
 
     return res.json({
       deliveryTrip: trip,

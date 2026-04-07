@@ -13,6 +13,8 @@ import {
   verifyEsewaSignature,
   verifyEsewaTransactionStatus,
 } from "../services/paymentService.js";
+import { getOrCreateInvoiceForOrder } from "../services/invoiceService.js";
+import { getOrderForNotification, sendPaymentSuccessEmail } from "../services/notificationService.js";
 
 const paymentPopulate = [
   {
@@ -96,6 +98,34 @@ const applyFallbackOutcomeStatus = async (payment, outcome) => {
 
   await payment.save();
   return true;
+};
+
+const notifyPaymentSuccessIfNeeded = async ({ paymentId, orderId, generatedBy }) => {
+  const payment = await Payment.findById(paymentId);
+  if (!payment || payment.status !== "COMPLETE" || payment.successEmailSentAt) {
+    return;
+  }
+
+  const order = await getOrderForNotification(orderId);
+  if (!order) {
+    return;
+  }
+
+  const invoice = await getOrCreateInvoiceForOrder({
+    orderId,
+    generatedBy: generatedBy || order.approvedBy?._id || order.contractor?._id,
+  });
+
+  const sent = await sendPaymentSuccessEmail({
+    order,
+    payment,
+    invoice,
+  });
+
+  if (sent) {
+    payment.successEmailSentAt = new Date();
+    await payment.save();
+  }
 };
 
 export const initiateEsewaPayment = async (req, res) => {
@@ -209,6 +239,16 @@ export const verifyPayment = async (req, res) => {
 
     const populatedPayment = await Payment.findById(payment._id).populate(paymentPopulate);
 
+    try {
+      await notifyPaymentSuccessIfNeeded({
+        paymentId: payment._id,
+        orderId: result.order?._id || payment.order,
+        generatedBy: req.user._id,
+      });
+    } catch (emailErr) {
+      console.error("Failed to send payment success email:", emailErr.message);
+    }
+
     return res.json({
       message: "Payment verified successfully",
       payment: populatedPayment,
@@ -273,6 +313,16 @@ export const handleEsewaCallback = async (req, res) => {
     }
 
     const populatedPayment = await Payment.findById(payment._id).populate(paymentPopulate);
+
+    try {
+      await notifyPaymentSuccessIfNeeded({
+        paymentId: payment._id,
+        orderId: result.order?._id || payment.order,
+      });
+    } catch (emailErr) {
+      console.error("Failed to send payment success email:", emailErr.message);
+    }
+
     return sendCallbackResponse(req, res, populatedPayment, result.order);
   } catch (err) {
     return res.status(500).json({
@@ -440,6 +490,16 @@ export const recordManualPayment = async (req, res) => {
 
     const { order: updatedOrder } = await syncOrderPaymentStatus(order._id);
     const populatedPayment = await Payment.findById(payment._id).populate(paymentPopulate);
+
+    try {
+      await notifyPaymentSuccessIfNeeded({
+        paymentId: payment._id,
+        orderId: updatedOrder._id,
+        generatedBy: req.user._id,
+      });
+    } catch (emailErr) {
+      console.error("Failed to send payment success email:", emailErr.message);
+    }
 
     return res.status(201).json({
       message: "Manual payment recorded successfully",

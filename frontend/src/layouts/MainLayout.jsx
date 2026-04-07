@@ -3,24 +3,23 @@ import Navbar from "../components/Navbar.jsx";
 
 const MainLayout = () => {
   return (
-    <div className="min-h-screen bg-stone-50">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#fafaf9_0%,#f5f5f4_38%,#fafaf9_100%)]">
       <Navbar />
-      <main className="max-w-6xl mx-auto px-6 py-10">
+      <main className="mx-auto max-w-6xl px-6 py-10">
         <Outlet />
       </main>
-      
-      {/* Footer */}
-      <footer className="border-t border-stone-200 mt-20">
-        <div className="max-w-6xl mx-auto px-6 py-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+
+      <footer className="mt-20 border-t border-stone-200">
+        <div className="mx-auto max-w-6xl px-6 py-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-teal-600 rounded flex items-center justify-center">
-                <span className="text-white font-bold text-xs">CS</span>
+              <div className="flex h-6 w-6 items-center justify-center rounded bg-teal-600">
+                <span className="text-xs font-bold text-white">CS</span>
               </div>
               <span className="text-sm text-stone-600">Crusher Material Sewa</span>
             </div>
             <p className="text-sm text-stone-500">
-              © {new Date().getFullYear()} All rights reserved.
+              (c) {new Date().getFullYear()} All rights reserved.
             </p>
           </div>
         </div>

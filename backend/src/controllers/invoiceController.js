@@ -1,41 +1,10 @@
 import Invoice from "../models/Invoice.js";
-import Order from "../models/Order.js";
-import { populateOrderWithDeliveriesQuery, attachDeliveryTripsToOrders } from "../services/deliveryService.js";
-
-const invoicePopulate = [
-  {
-    path: "order",
-    populate: populateOrderWithDeliveriesQuery,
-  },
-  {
-    path: "contractor",
-    select: "name email",
-  },
-  {
-    path: "generatedBy",
-    select: "name email role",
-  },
-];
-
-const generateInvoiceNumber = async () => {
-  const count = await Invoice.countDocuments();
-  return `INV-${String(count + 1).padStart(5, "0")}`;
-};
+import { attachDeliveryTripsToOrders } from "../services/deliveryService.js";
+import { enrichInvoice, getOrCreateInvoiceForOrder, invoicePopulate } from "../services/invoiceService.js";
 
 const canAccessInvoice = (invoice, user) =>
   user.role !== "CONTRACTOR" ||
   String(invoice.contractor?._id || invoice.contractor) === String(user._id);
-
-const enrichInvoice = async (invoiceDoc) => {
-  const populated = await Invoice.findById(invoiceDoc._id).populate(invoicePopulate);
-  if (!populated) {
-    return null;
-  }
-
-  const invoice = populated.toObject();
-  invoice.order = await attachDeliveryTripsToOrders(invoice.order);
-  return invoice;
-};
 
 export const generateInvoice = async (req, res) => {
   const { orderId, note = "" } = req.body;
@@ -45,33 +14,11 @@ export const generateInvoice = async (req, res) => {
   }
 
   try {
-    const order = await Order.findById(orderId);
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
-
-    if (order.orderStatus !== "APPROVED") {
-      return res.status(400).json({ message: "Only approved orders can have invoices" });
-    }
-
-    let invoice = await Invoice.findOne({ order: order._id });
-
-    if (!invoice) {
-      invoice = await Invoice.create({
-        order: order._id,
-        contractor: order.contractor,
-        invoiceNumber: await generateInvoiceNumber(),
-        generatedBy: req.user._id,
-        subtotalAmount: Number(order.totalAmount),
-        totalAmount: Number(order.totalAmount),
-        note: note.trim(),
-      });
-    } else if (note.trim()) {
-      invoice.note = note.trim();
-      await invoice.save();
-    }
-
-    const enrichedInvoice = await enrichInvoice(invoice);
+    const enrichedInvoice = await getOrCreateInvoiceForOrder({
+      orderId,
+      generatedBy: req.user._id,
+      note,
+    });
 
     return res.status(201).json({
       message: "Invoice generated successfully",

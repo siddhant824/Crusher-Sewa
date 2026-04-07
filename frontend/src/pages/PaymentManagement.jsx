@@ -3,6 +3,8 @@ import toast from "react-hot-toast";
 import { getAllOrders } from "../services/ordersApi.js";
 import { getAllPayments, getPaymentSummary, recordManualPayment } from "../services/paymentsApi.js";
 
+const PAYMENTS_PER_PAGE = 10;
+
 const statusStyles = {
   COMPLETE: "bg-teal-50 text-teal-700",
   PENDING: "bg-amber-50 text-amber-700",
@@ -21,6 +23,7 @@ const PaymentManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const [form, setForm] = useState({
     orderId: "",
     amount: "",
@@ -112,6 +115,18 @@ const PaymentManagement = () => {
 
     return rows;
   }, [orderPaymentStatusFilter, paymentMethodFilter, paymentRows, searchQuery]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [orderPaymentStatusFilter, paymentMethodFilter, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAYMENTS_PER_PAGE));
+  const paginatedRows = useMemo(() => {
+    const startIndex = (currentPage - 1) * PAYMENTS_PER_PAGE;
+    return filteredRows.slice(startIndex, startIndex + PAYMENTS_PER_PAGE);
+  }, [currentPage, filteredRows]);
+  const pageStart = filteredRows.length === 0 ? 0 : (currentPage - 1) * PAYMENTS_PER_PAGE + 1;
+  const pageEnd = Math.min(currentPage * PAYMENTS_PER_PAGE, filteredRows.length);
 
   const selectedOrder = orderOptions.find((order) => order._id === form.orderId);
 
@@ -284,7 +299,7 @@ const PaymentManagement = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
-              {filteredRows.map(({ order, latestPayment }) => (
+              {paginatedRows.map(({ order, latestPayment }) => (
                 <tr key={order._id}>
                   <td className="px-5 py-4">
                     <p className="font-medium text-stone-900">{order.contractor?.name}</p>
@@ -343,6 +358,34 @@ const PaymentManagement = () => {
             </tbody>
           </table>
         </div>
+        {filteredRows.length > 0 && (
+          <div className="flex flex-col gap-3 border-t border-stone-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-stone-500">
+              Showing {pageStart}-{pageEnd} of {filteredRows.length} payment records
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+                disabled={currentPage === 1}
+                className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="rounded-lg bg-stone-100 px-3 py-2 text-sm font-medium text-stone-700">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

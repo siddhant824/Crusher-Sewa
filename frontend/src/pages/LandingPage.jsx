@@ -1,122 +1,162 @@
 import { Link } from "react-router-dom";
 
-const features = [
+const systemBlocks = [
   {
-    title: "Easy Ordering",
-    desc: "Place orders for construction materials with just a few clicks",
-    icon: "📦",
+    title: "For Contractors",
+    points: [
+      "Browse available materials and stock",
+      "Place orders and follow approval status",
+      "Track delivery progress and payment status",
+    ],
   },
   {
-    title: "Live Stock",
-    desc: "Check real-time availability of sand, gravel, and aggregates",
-    icon: "📊",
+    title: "For Admin and Manager",
+    points: [
+      "Manage materials, users, stock, and production",
+      "Approve orders and assign delivery trips",
+      "Generate invoices and record payments",
+    ],
   },
-  {
-    title: "Track Delivery",
-    desc: "Monitor your delivery trips from crusher to construction site",
-    icon: "🚚",
-  },
-  {
-    title: "Secure Payments",
-    desc: "Pay safely through eSewa and other trusted gateways",
-    icon: "🔒",
-  },
+];
+
+const workflow = [
+  "Contractor places an order",
+  "Admin or manager reviews and approves it",
+  "Stock updates and delivery trips are assigned",
+  "Invoice is generated and payment is recorded",
 ];
 
 const LandingPage = () => {
   return (
-    <div className="space-y-20 pb-20">
-      {/* Hero Section */}
-      <section className="pt-16 pb-8">
-        <div className="max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-teal-50 text-teal-700 rounded-full text-sm font-medium mb-6">
-            <span className="w-2 h-2 bg-teal-500 rounded-full"></span>
-            Construction Material Platform
-          </div>
-          
-          <h1 className="text-4xl sm:text-5xl font-bold text-stone-900 leading-tight mb-6">
-            Get quality crusher materials delivered to your site
-          </h1>
-          
-          <p className="text-lg text-stone-600 mb-8 max-w-2xl">
-            Order sand, gravel, and aggregates from verified crushers. 
-            Track deliveries in real-time and manage payments securely.
-          </p>
+    <div className="space-y-12 pb-16">
+      <section className="rounded-[28px] border border-stone-200 bg-white px-6 py-10 shadow-sm sm:px-10 sm:py-12">
+        <div className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
+          <div className="max-w-3xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">
+              Crusher Material Order Management
+            </p>
+            <h1 className="mt-4 text-4xl font-semibold leading-tight tracking-tight text-stone-900 sm:text-5xl">
+              A simple system to manage crusher materials, orders, delivery, invoices, and payments
+            </h1>
+            <p className="mt-5 max-w-2xl text-base leading-7 text-stone-600 sm:text-lg">
+              Crusher Sewa is built for construction material supply operations. It helps contractors place orders and helps admin or managers handle approvals, stock, truck delivery, invoicing, and payment records in one place.
+            </p>
 
-          <div className="flex flex-wrap gap-3">
-            <Link
-              to="/register"
-              className="px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium inline-flex items-center gap-2"
-            >
-              Start Ordering
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
-            </Link>
-            <Link
-              to="/login"
-              className="px-6 py-3 bg-stone-100 text-stone-700 rounded-lg hover:bg-stone-200 font-medium"
-            >
-              Login to Account
-            </Link>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                to="/register"
+                className="rounded-xl bg-teal-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-teal-700"
+              >
+                Register as Contractor
+              </Link>
+              <Link
+                to="/login"
+                className="rounded-xl border border-stone-300 px-5 py-3 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-50"
+              >
+                Login
+              </Link>
+            </div>
+          </div>
+
+          <div className="rounded-[24px] border border-stone-200 bg-stone-50 p-5">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-stone-500">
+              Main Flow
+            </p>
+            <div className="mt-5 space-y-4">
+              {workflow.map((item, index) => (
+                <div
+                  key={item}
+                  className="flex items-start gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3"
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-50 text-sm font-semibold text-teal-700">
+                    {index + 1}
+                  </div>
+                  <p className="pt-1 text-sm leading-6 text-stone-700">{item}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-        {[
-          { value: "50+", label: "Crushers" },
-          { value: "1,000+", label: "Orders" },
-          { value: "500+", label: "Contractors" },
-          { value: "24/7", label: "Support" },
-        ].map((stat) => (
-          <div key={stat.label} className="text-center">
-            <div className="text-3xl font-bold text-teal-600">{stat.value}</div>
-            <div className="text-sm text-stone-500 mt-1">{stat.label}</div>
+      <section className="grid gap-6 lg:grid-cols-2">
+        {systemBlocks.map((block) => (
+          <div
+            key={block.title}
+            className="rounded-[24px] border border-stone-200 bg-white p-6 shadow-sm"
+          >
+            <h2 className="text-2xl font-semibold tracking-tight text-stone-900">
+              {block.title}
+            </h2>
+            <div className="mt-5 space-y-3">
+              {block.points.map((point) => (
+                <div key={point} className="flex items-start gap-3">
+                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-teal-600" />
+                  <p className="text-sm leading-6 text-stone-600">{point}</p>
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </section>
 
-      {/* Features Section */}
-      <section>
-        <div className="mb-10">
-          <h2 className="text-2xl font-bold text-stone-900 mb-2">
-            Everything you need
-          </h2>
-          <p className="text-stone-600">
-            Tools to streamline your construction material procurement
-          </p>
-        </div>
+      <section className="rounded-[24px] border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
+        <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight text-stone-900">
+              What the system covers
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-stone-600 sm:text-base">
+              This project is focused on practical crusher-site workflow. It is not a generic shopping site. It covers materials, stock updates through production, order approval, delivery trips, invoices, and payment tracking.
+            </p>
+          </div>
 
-        <div className="grid sm:grid-cols-2 gap-4">
-          {features.map((feature) => (
-            <div
-              key={feature.title}
-              className="bg-white border border-stone-200 rounded-xl p-6 hover:border-teal-200 hover:shadow-sm transition-all"
-            >
-              <div className="text-2xl mb-3">{feature.icon}</div>
-              <h3 className="font-semibold text-stone-900 mb-1">{feature.title}</h3>
-              <p className="text-sm text-stone-600">{feature.desc}</p>
-            </div>
-          ))}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[
+              "Material management",
+              "Order placement and approval",
+              "Production and stock control",
+              "Truck-based delivery trips",
+              "Invoice generation",
+              "Payment tracking",
+            ].map((item) => (
+              <div
+                key={item}
+                className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4 text-sm font-medium text-stone-700"
+              >
+                {item}
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="bg-stone-900 rounded-2xl p-8 sm:p-12 text-center">
-        <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
-          Ready to simplify your material orders?
-        </h2>
-        <p className="text-stone-400 mb-6 max-w-xl mx-auto">
-          Join hundreds of contractors who trust Crusher Sewa for their construction material needs.
-        </p>
-        <Link
-          to="/register"
-          className="inline-flex px-6 py-3 bg-teal-500 text-white rounded-lg hover:bg-teal-600 font-medium"
-        >
-          Create Free Account
-        </Link>
+      <section className="rounded-[28px] border border-stone-200 bg-stone-900 px-6 py-8 text-white shadow-sm sm:px-8">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-2xl">
+            <h2 className="text-2xl font-semibold tracking-tight">
+              Start managing crusher material orders in a cleaner way
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-stone-300 sm:text-base">
+              Contractors can register and place orders, while admin and managers can handle the full operational process from approval to delivery and payment.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <Link
+              to="/register"
+              className="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-stone-900 transition-colors hover:bg-stone-100"
+            >
+              Create Account
+            </Link>
+            <Link
+              to="/login"
+              className="rounded-xl border border-stone-700 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-stone-800"
+            >
+              Login
+            </Link>
+          </div>
+        </div>
       </section>
     </div>
   );

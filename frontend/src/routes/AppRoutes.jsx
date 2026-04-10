@@ -17,6 +17,7 @@ import StockControl from "../pages/StockControl.jsx";
 import TrucksManagement from "../pages/TrucksManagement.jsx";
 import AddTruck from "../pages/AddTruck.jsx";
 import Materials from "../pages/contractor/Materials.jsx";
+import Cart from "../pages/contractor/Cart.jsx";
 import Orders from "../pages/contractor/Orders.jsx";
 import DeliveryHistory from "../pages/contractor/DeliveryHistory.jsx";
 import Invoices from "../pages/contractor/Invoices.jsx";
@@ -115,6 +116,7 @@ const AppRoutes = () => (
       }
     >
       <Route path="/contractor/materials" element={<Materials />} />
+      <Route path="/contractor/cart" element={<Cart />} />
       <Route path="/contractor/orders" element={<Orders />} />
       <Route path="/contractor/deliveries" element={<DeliveryHistory />} />
       <Route path="/contractor/invoices" element={<Invoices />} />

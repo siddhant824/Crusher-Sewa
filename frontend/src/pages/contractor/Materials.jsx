@@ -1,14 +1,12 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { getMaterials } from "../../services/materialsApi.js";
-import { createOrder } from "../../services/ordersApi.js";
-import { clearDraftOrder, getDraftOrder, saveDraftOrder } from "../../utils/orderDraft.js";
+import { getDraftOrder, saveDraftOrder } from "../../utils/orderDraft.js";
 
 const Materials = () => {
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(true);
   const [quantities, setQuantities] = useState({});
-  const [placingOrder, setPlacingOrder] = useState(false);
 
   useEffect(() => {
     fetchMaterials();
@@ -56,8 +54,6 @@ const Materials = () => {
     })
     .filter(Boolean);
 
-  const orderTotal = selectedItems.reduce((sum, item) => sum + item.subtotal, 0);
-
   useEffect(() => {
     const draftItems = selectedItems.map((item) => ({
       materialId: item.materialId,
@@ -69,6 +65,7 @@ const Materials = () => {
     }));
 
     saveDraftOrder(draftItems);
+    window.dispatchEvent(new Event("order-cart-updated"));
   }, [selectedItems]);
 
   const handleQuantityChange = (materialId, value) => {
@@ -86,30 +83,6 @@ const Materials = () => {
       ...current,
       [materialId]: String(nextValue),
     }));
-  };
-
-  const handlePlaceOrder = async () => {
-    if (selectedItems.length === 0) {
-      toast.error("Select at least one material quantity to place an order");
-      return;
-    }
-
-    setPlacingOrder(true);
-    try {
-      const payload = selectedItems.map((item) => ({
-        materialId: item.materialId,
-        quantity: item.quantity,
-      }));
-
-      const data = await createOrder(payload);
-      toast.success(data.message || "Order placed successfully");
-      setQuantities({});
-      clearDraftOrder();
-    } catch (err) {
-      toast.error(err.message || "Failed to place order");
-    } finally {
-      setPlacingOrder(false);
-    }
   };
 
   const handleQuickAdd = (material) => {
@@ -154,7 +127,7 @@ const Materials = () => {
               Browse materials and prepare your next order
             </h1>
             <p className="mt-2 text-sm leading-6 text-stone-600 sm:text-base">
-              Check live stock, choose the quantity you need, and build a clean order request before sending it for approval.
+              Check live stock and choose quantity. Open Cart from navbar to review and place your order.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -163,7 +136,7 @@ const Materials = () => {
               <p className="mt-2 text-2xl font-semibold text-stone-900">{materials.length}</p>
             </div>
             <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 shadow-sm">
-              <p className="text-xs font-medium uppercase tracking-wide text-stone-400">Draft Items</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-stone-400">Cart Items</p>
               <p className="mt-2 text-2xl font-semibold text-stone-900">{selectedItems.length}</p>
             </div>
           </div>
@@ -278,63 +251,6 @@ const Materials = () => {
           })}
         </div>
       )}
-
-      <div className="mt-8 rounded-[28px] border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 flex-1">
-            <h2 className="text-xl font-semibold tracking-tight text-stone-900">Order Summary</h2>
-            <p className="mt-1 text-sm leading-6 text-stone-500">
-              Review selected materials before sending the order for approval.
-            </p>
-
-            {selectedItems.length === 0 ? (
-              <div className="mt-4 rounded-2xl border border-dashed border-stone-200 bg-stone-50 px-4 py-8 text-center">
-                <p className="text-sm text-stone-400">
-                  No materials selected yet.
-                </p>
-              </div>
-            ) : (
-              <div className="mt-5 space-y-3">
-                {selectedItems.map((item) => (
-                  <div
-                    key={item.materialId}
-                    className="flex flex-col gap-3 rounded-2xl border border-stone-200 p-4 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium text-stone-900">{item.material.name}</p>
-                      <p className="mt-1 text-sm text-stone-500">
-                        {item.quantity} {item.material.unit} x Rs. {item.material.ratePerCuMetre.toFixed(2)}
-                      </p>
-                    </div>
-                    <p className="text-lg font-semibold text-stone-900">
-                      Rs. {item.subtotal.toFixed(2)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="w-full rounded-[24px] border border-stone-200 bg-stone-50 p-5 xl:w-80">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-400">Selected Items</p>
-            <p className="mt-2 text-3xl font-semibold tracking-tight text-stone-900">
-              {selectedItems.length}
-            </p>
-            <p className="mt-5 text-xs font-medium uppercase tracking-[0.18em] text-stone-400">Estimated Total</p>
-            <p className="mt-2 text-3xl font-semibold tracking-tight text-stone-900">
-              Rs. {orderTotal.toFixed(2)}
-            </p>
-            <button
-              type="button"
-              disabled={placingOrder || selectedItems.length === 0}
-              onClick={handlePlaceOrder}
-              className="mt-6 w-full rounded-2xl bg-teal-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {placingOrder ? "Placing Order..." : "Place Order"}
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

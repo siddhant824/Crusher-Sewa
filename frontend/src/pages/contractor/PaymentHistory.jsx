@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router-do
 import toast from "react-hot-toast";
 import { getMyOrders } from "../../services/ordersApi.js";
 import { getMyPayments, initiateEsewaPayment, verifyPayment } from "../../services/paymentsApi.js";
+import { getInvoices } from "../../services/invoicesApi.js";
+import { downloadInvoicePdf } from "../../utils/invoicePdf.js";
 
 const statusStyles = {
   COMPLETE: "bg-teal-50 text-teal-700",
@@ -29,6 +31,7 @@ const PaymentHistory = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [payments, setPayments] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [payingOrderId, setPayingOrderId] = useState(null);
@@ -40,9 +43,14 @@ const PaymentHistory = () => {
   const fetchPaymentsAndOrders = useCallback(async () => {
     setLoading(true);
     try {
-      const [paymentsData, ordersData] = await Promise.all([getMyPayments(), getMyOrders()]);
+      const [paymentsData, ordersData, invoicesData] = await Promise.all([
+        getMyPayments(),
+        getMyOrders(),
+        getInvoices(),
+      ]);
       setPayments(paymentsData.payments || []);
       setOrders(ordersData.orders || []);
+      setInvoices(invoicesData.invoices || []);
     } catch (err) {
       toast.error(err.message || "Failed to load payment history");
     } finally {
@@ -297,6 +305,17 @@ const PaymentHistory = () => {
     });
   }, [payments, searchQuery, selectedOrderId]);
 
+  const invoiceByOrderId = useMemo(() => {
+    const map = new Map();
+    invoices.forEach((invoice) => {
+      const orderId = String(invoice.order?._id || invoice.order || "");
+      if (orderId) {
+        map.set(orderId, invoice);
+      }
+    });
+    return map;
+  }, [invoices]);
+
   if (loading) {
     return <div className="py-20 text-center text-stone-500">Loading payment history...</div>;
   }
@@ -414,10 +433,15 @@ const PaymentHistory = () => {
                 <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">Transaction</th>
                 <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">Reference</th>
                 <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">Created</th>
+                <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-stone-500">Invoice</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
-              {filteredPayments.map((payment) => (
+              {filteredPayments.map((payment) => {
+                const orderId = String(payment.order?._id || payment.order || "");
+                const invoice = invoiceByOrderId.get(orderId);
+
+                return (
                 <tr key={payment._id}>
                   <td className="px-5 py-4">
                     <p className="font-medium text-stone-900">Rs. {Number(payment.order?.totalAmount || 0).toFixed(2)}</p>
@@ -442,11 +466,33 @@ const PaymentHistory = () => {
                   <td className="px-5 py-4 text-sm text-stone-600">
                     {new Date(payment.createdAt).toLocaleString()}
                   </td>
+                  <td className="px-5 py-4">
+                    {invoice ? (
+                      <div className="flex flex-wrap gap-2">
+                        <Link
+                          to={`/contractor/invoices/${invoice._id}`}
+                          className="rounded-lg border border-stone-300 px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50"
+                        >
+                          Open Invoice
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => downloadInvoicePdf(invoice)}
+                          className="rounded-lg bg-stone-900 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-stone-800"
+                        >
+                          Download
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-stone-400">Not available</span>
+                    )}
+                  </td>
                 </tr>
-              ))}
+              );
+              })}
               {filteredPayments.length === 0 && (
                 <tr>
-                  <td colSpan="6" className="px-5 py-12 text-center text-stone-500">
+                  <td colSpan="7" className="px-5 py-12 text-center text-stone-500">
                     No payment history found.
                   </td>
                 </tr>

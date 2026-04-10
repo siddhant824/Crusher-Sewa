@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { createOrder, getMyOrders } from "../../services/ordersApi.js";
+import { getMyOrders } from "../../services/ordersApi.js";
 import { getInvoices } from "../../services/invoicesApi.js";
-import { clearDraftOrder, getDraftOrder, saveDraftOrder } from "../../utils/orderDraft.js";
 
 const statusStyles = {
   PENDING: "bg-amber-50 text-amber-700 border-amber-200",
@@ -26,10 +25,8 @@ const paymentStyles = {
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
-  const [draftItems, setDraftItems] = useState([]);
   const [invoiceMap, setInvoiceMap] = useState({});
   const [loading, setLoading] = useState(true);
-  const [confirmingDraft, setConfirmingDraft] = useState(false);
 
   const fetchInvoices = useCallback(async () => {
     try {
@@ -59,84 +56,7 @@ const Orders = () => {
 
   useEffect(() => {
     fetchOrders();
-    setDraftItems(getDraftOrder());
   }, [fetchOrders]);
-
-  const updateDraftItems = (updater) => {
-    setDraftItems((current) => {
-      const nextItems = updater(current)
-        .map((item) => {
-          const quantity = Number(item.quantity);
-          const ratePerCuMetre = Number(item.ratePerCuMetre);
-
-          if (quantity <= 0) {
-            return null;
-          }
-
-          return {
-            ...item,
-            quantity,
-            ratePerCuMetre,
-            subtotal: Number((quantity * ratePerCuMetre).toFixed(2)),
-          };
-        })
-        .filter(Boolean);
-
-      saveDraftOrder(nextItems);
-      return nextItems;
-    });
-  };
-
-  const draftTotal = draftItems.reduce(
-    (sum, item) => sum + Number(item.subtotal || 0),
-    0
-  );
-
-  const handleConfirmDraft = async () => {
-    if (draftItems.length === 0) {
-      toast.error("There is no draft order to confirm");
-      return;
-    }
-
-    setConfirmingDraft(true);
-    try {
-      const payload = draftItems.map((item) => ({
-        materialId: item.materialId,
-        quantity: Number(item.quantity),
-      }));
-
-      const data = await createOrder(payload);
-      toast.success(data.message || "Order placed successfully");
-      clearDraftOrder();
-      setDraftItems([]);
-      setOrders((current) => [data.order, ...current]);
-      fetchInvoices();
-    } catch (err) {
-      toast.error(err.message || "Failed to confirm draft order");
-    } finally {
-      setConfirmingDraft(false);
-    }
-  };
-
-  const handleDraftQuantityChange = (materialId, value) => {
-    updateDraftItems((current) =>
-      current.map((item) =>
-        item.materialId === materialId
-          ? { ...item, quantity: value === "" ? "" : Number(value) }
-          : item
-      )
-    );
-  };
-
-  const changeDraftQuantity = (materialId, delta) => {
-    updateDraftItems((current) =>
-      current.map((item) =>
-        item.materialId === materialId
-          ? { ...item, quantity: Math.max(Number(item.quantity || 0) + delta, 0) }
-          : item
-      )
-    );
-  };
 
   if (loading) {
     return (
@@ -156,14 +76,10 @@ const Orders = () => {
             </span>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-stone-900">Review your orders without the clutter</h1>
             <p className="mt-2 text-sm leading-6 text-stone-600 sm:text-base">
-              Keep this page focused on order summaries. Use Deliveries, Invoices, and Payments for the next steps.
+              Keep this page focused on order summaries. Use Deliveries and Payments for the next steps.
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 shadow-sm">
-              <p className="text-xs font-medium uppercase tracking-wide text-stone-400">Draft</p>
-              <p className="mt-2 text-2xl font-semibold text-stone-900">{draftItems.length}</p>
-            </div>
+          <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 shadow-sm">
               <p className="text-xs font-medium uppercase tracking-wide text-stone-400">Orders</p>
               <p className="mt-2 text-2xl font-semibold text-stone-900">{orders.length}</p>
@@ -178,82 +94,7 @@ const Orders = () => {
         </div>
       </div>
 
-      {draftItems.length > 0 && (
-        <div className="mb-6 rounded-[24px] border border-amber-200 bg-[linear-gradient(135deg,#fffbeb_0%,#fff7ed_100%)] p-5 shadow-sm">
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold text-amber-900">Draft Order</h2>
-              <p className="mt-1 text-sm text-amber-700">
-                These items stay here until you confirm and submit the order.
-              </p>
-            </div>
-            <span className="inline-flex rounded-full border border-amber-200 bg-white px-2.5 py-1 text-xs font-medium text-amber-700">
-              Awaiting confirmation
-            </span>
-          </div>
-
-          <div className="space-y-3">
-            {draftItems.map((item) => (
-              <div
-                key={`draft-${item.materialId}`}
-                className="flex flex-col gap-4 rounded-2xl border border-amber-100 bg-white p-4 lg:flex-row lg:items-center lg:justify-between"
-              >
-                <div>
-                  <p className="font-medium text-stone-900">{item.name}</p>
-                  <p className="text-sm text-stone-500">
-                    {item.quantity} {item.unit} x Rs. {Number(item.ratePerCuMetre).toFixed(2)}
-                  </p>
-                </div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <div className="flex items-center gap-2 rounded-2xl border border-stone-200 bg-stone-50 px-2 py-2">
-                    <button
-                      type="button"
-                      onClick={() => changeDraftQuantity(item.materialId, -1)}
-                      className="flex h-8 w-8 items-center justify-center rounded-xl border border-stone-200 bg-white text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-100"
-                    >
-                      -
-                    </button>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={item.quantity}
-                      onChange={(e) => handleDraftQuantityChange(item.materialId, e.target.value)}
-                      className="w-16 rounded-xl border border-stone-200 bg-white px-2 py-1.5 text-center text-sm font-medium text-stone-900 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => changeDraftQuantity(item.materialId, 1)}
-                      className="flex h-8 w-8 items-center justify-center rounded-xl border border-stone-200 bg-white text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-100"
-                    >
-                      +
-                    </button>
-                  </div>
-                  <p className="min-w-24 text-right font-medium text-stone-900">
-                    Rs. {Number(item.subtotal).toFixed(2)}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-amber-700">Draft Total</p>
-              <p className="text-2xl font-semibold text-stone-900">Rs. {draftTotal.toFixed(2)}</p>
-            </div>
-            <button
-              type="button"
-              onClick={handleConfirmDraft}
-              disabled={confirmingDraft}
-              className="rounded-2xl bg-teal-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {confirmingDraft ? "Confirming..." : "Confirm Order"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {orders.length === 0 && draftItems.length === 0 ? (
+      {orders.length === 0 ? (
         <div className="rounded-xl border border-stone-200 bg-white p-12 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-stone-100">
             <svg className="h-8 w-8 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -265,7 +106,7 @@ const Orders = () => {
             When you place orders for materials, they will appear here with their approval, delivery, and payment progress.
           </p>
         </div>
-      ) : orders.length > 0 ? (
+      ) : (
         <div className="space-y-5">
           {orders.map((order, index) => {
             const invoice = invoiceMap[order._id];
@@ -362,7 +203,7 @@ const Orders = () => {
                       {invoice ? invoice.invoiceNumber : "Invoice not generated yet"}
                     </p>
                     <p className="mt-1 text-sm text-stone-500">
-                      View and download your invoices from the Invoices page.
+                      View and download your invoice in Payments.
                     </p>
                   </div>
                 </div>
@@ -376,22 +217,16 @@ const Orders = () => {
                   </Link>
                   <Link
                     to={`/contractor/payments?order=${order._id}`}
-                    className="rounded-2xl border border-stone-300 px-4 py-2.5 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-50"
-                  >
-                    Payments
-                  </Link>
-                  <Link
-                    to={`/contractor/invoices?order=${order._id}`}
                     className="rounded-2xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-teal-700"
                   >
-                    {invoice ? "View Invoice" : "Invoices"}
+                    Payments
                   </Link>
                 </div>
               </div>
             );
           })}
         </div>
-      ) : null}
+      )}
     </div>
   );
 };

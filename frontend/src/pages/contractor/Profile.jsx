@@ -1,14 +1,28 @@
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import { useAuth } from "../../hooks/useAuth.js";
 import { getMyOrders } from "../../services/ordersApi.js";
 
 const Profile = () => {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
     delivered: 0,
   });
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    name: user?.name || "",
+    email: user?.email || "",
+  });
+
+  useEffect(() => {
+    setForm({
+      name: user?.name || "",
+      email: user?.email || "",
+    });
+  }, [user?.name, user?.email]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -32,6 +46,36 @@ const Profile = () => {
 
     fetchStats();
   }, []);
+
+  const handleCancel = () => {
+    setForm({
+      name: user?.name || "",
+      email: user?.email || "",
+    });
+    setIsEditing(false);
+  };
+
+  const handleSave = async (event) => {
+    event.preventDefault();
+
+    if (!form.name.trim() || !form.email.trim()) {
+      toast.error("Name and email are required");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await updateProfile({
+        name: form.name.trim(),
+        email: form.email.trim(),
+      });
+      setIsEditing(false);
+    } catch {
+      // handled in AuthContext
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div>
@@ -84,62 +128,107 @@ const Profile = () => {
 
         <div className="lg:col-span-2">
           <div className="rounded-[24px] border border-stone-200 bg-white p-6 shadow-sm">
-            <h3 className="mb-4 text-lg font-semibold text-stone-900">Account Details</h3>
-
-            <div className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-stone-500">
-                    Full Name
-                  </label>
-                  <p className="text-stone-900">{user?.name}</p>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-stone-500">
-                    Email Address
-                  </label>
-                  <p className="text-stone-900">{user?.email}</p>
-                </div>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-stone-500">
-                    Account Type
-                  </label>
-                  <p className="text-stone-900">{user?.role}</p>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-stone-500">
-                    Account Status
-                  </label>
-                  <p className="font-medium text-teal-600">Active</p>
-                </div>
-              </div>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h3 className="text-lg font-semibold text-stone-900">Account Details</h3>
+              {!isEditing ? (
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-800"
+                >
+                  Edit Profile
+                </button>
+              ) : null}
             </div>
+
+            {!isEditing ? (
+              <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-stone-500">
+                      Full Name
+                    </label>
+                    <p className="text-stone-900">{user?.name}</p>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-stone-500">
+                      Email Address
+                    </label>
+                    <p className="text-stone-900">{user?.email}</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-stone-500">
+                      Account Type
+                    </label>
+                    <p className="text-stone-900">{user?.role}</p>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-stone-500">
+                      Account Status
+                    </label>
+                    <p className="font-medium text-teal-600">Active</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSave} className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-stone-500">
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      value={form.name}
+                      onChange={(event) => setForm((curr) => ({ ...curr, name: event.target.value }))}
+                      className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900"
+                      placeholder="Enter your full name"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-stone-500">
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      value={form.email}
+                      onChange={(event) => setForm((curr) => ({ ...curr, email: event.target.value }))}
+                      className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900"
+                      placeholder="Enter your email"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {saving ? "Saving..." : "Save Changes"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    disabled={saving}
+                    className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
 
             <div className="mt-6 border-t border-stone-200 pt-6">
               <p className="text-sm text-stone-500">
-                Need to update your profile information? Contact support for assistance.
+                Keep your name and email updated so billing and payment notifications reach you correctly.
               </p>
             </div>
           </div>
 
-          <div className="mt-6 rounded-[24px] border border-stone-200 bg-white p-6 shadow-sm">
-            <h3 className="mb-4 text-lg font-semibold text-stone-900">Activity Summary</h3>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              {[
-                { label: "Total Orders", value: stats.total },
-                { label: "Pending", value: stats.pending },
-                { label: "Delivered", value: stats.delivered },
-              ].map((stat) => (
-                <div key={stat.label} className="rounded-2xl bg-stone-50 p-4 text-center">
-                  <p className="text-2xl font-semibold text-stone-900">{stat.value}</p>
-                  <p className="mt-1 text-xs text-stone-500">{stat.label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>

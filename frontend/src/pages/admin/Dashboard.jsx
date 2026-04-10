@@ -1,8 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "../../hooks/useAuth.js";
 import { getReportSummary } from "../../services/reportsApi.js";
+
+const formatCurrency = (value) => {
+  const amount = Number(value || 0);
+  return new Intl.NumberFormat("en-NP", {
+    style: "currency",
+    currency: "NPR",
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
+
+const formatNumber = (value) => new Intl.NumberFormat("en-NP").format(Number(value || 0));
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -24,98 +35,194 @@ const Dashboard = () => {
   const quickActions = [
     {
       title: "Manage Users",
-      desc: "View and manage all users",
+      desc: "Create and control system access for staff accounts.",
       path: "/admin/users",
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-        </svg>
-      ),
+      icon: "users",
+    },
+    {
+      title: "Order Desk",
+      desc: "Review pending orders and move approvals faster.",
+      path: "/admin/orders",
+      icon: "orders",
     },
     {
       title: "Payments",
-      desc: "Review transactions and record manual payments",
+      desc: "Track due collections and record manual payments.",
       path: "/admin/payments",
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2m0-6h3v6h-3a2 2 0 110-4h3" />
-        </svg>
-      ),
+      icon: "payments",
     },
     {
       title: "Invoices",
-      desc: "Generate invoice records and printable invoice pages",
+      desc: "Create invoices and manage billing lifecycle.",
       path: "/admin/invoices",
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      ),
+      icon: "invoices",
     },
   ];
 
-  const stats = [
-    { label: "Revenue", value: summary ? `Rs. ${summary.sales.totalRevenue.toFixed(2)}` : "..." },
-    { label: "Stock Summary", value: summary ? `${summary.stock.totalStock.toFixed(2)}` : "..." },
-    { label: "Pending Payments", value: summary ? String(summary.payments.pendingPayments) : "..." },
-  ];
+  const kpiCards = useMemo(
+    () => [
+      {
+        label: "Total Revenue",
+        value: summary ? formatCurrency(summary.sales.totalRevenue) : "...",
+        note: "Completed and partially refunded payments",
+      },
+      {
+        label: "Outstanding Amount",
+        value: summary ? formatCurrency(summary.payments.unpaidAmountTotal) : "...",
+        note: "Unpaid order balance requiring follow-up",
+      },
+      {
+        label: "Pending Orders",
+        value: summary ? formatNumber(summary.sales.pendingOrders) : "...",
+        note: "Orders waiting for operational action",
+      },
+      {
+        label: "Low Stock Materials",
+        value: summary ? formatNumber(summary.stock.lowStockMaterials) : "...",
+        note: "Materials at or below threshold",
+      },
+    ],
+    [summary]
+  );
+
+  const topMaterials = summary?.topSellingMaterials || [];
+  const monthlySummary = (summary?.monthlySummary || []).slice(-4);
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-stone-900">
-          Welcome back, {user?.name?.split(" ")[0]}
-        </h1>
-        <p className="mt-1 text-stone-500">
-          Here is the latest operational summary across sales, stock, and payments.
-        </p>
-      </div>
-
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {stats.map((stat) => (
-          <div key={stat.label} className="rounded-xl border border-stone-200 bg-white p-5">
-            <p className="mb-1 text-sm text-stone-500">{stat.label}</p>
-            <p className="text-2xl font-semibold text-stone-900">{stat.value}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="mb-8">
-        <h2 className="mb-4 text-lg font-semibold text-stone-900">Quick Actions</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {quickActions.map((action) => (
-            <Link
-              key={action.path}
-              to={action.path}
-              className="group rounded-xl border border-stone-200 bg-white p-5 transition-all hover:border-teal-300 hover:shadow-sm"
-            >
-              <div className="flex items-start gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-50 text-teal-600 transition-colors group-hover:bg-teal-100">
-                  {action.icon}
-                </div>
-                <div>
-                  <h3 className="font-medium text-stone-900">{action.title}</h3>
-                  <p className="mt-0.5 text-sm text-stone-500">{action.desc}</p>
-                </div>
-              </div>
-            </Link>
-          ))}
+    <div className="space-y-6 lg:space-y-8">
+      <section className="relative overflow-hidden rounded-3xl border border-stone-200 bg-gradient-to-br from-stone-900 via-stone-800 to-teal-900 p-6 text-white shadow-[0_25px_60px_rgba(28,25,23,0.35)] sm:p-8">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 left-0 h-48 w-48 rounded-full bg-teal-300/20 blur-3xl" />
+        <div className="relative">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-100/90">
+            Admin Command Center
+          </p>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+            Welcome back, {user?.name?.split(" ")[0]}
+          </h1>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-stone-200 sm:text-base">
+            Monitor sales, stock, dispatch, invoicing, and collections from one operational dashboard.
+          </p>
         </div>
-      </div>
+      </section>
 
-      <div className="rounded-xl border border-stone-200 bg-stone-50 p-5">
-        <div className="flex items-start gap-3">
-          <svg className="mt-0.5 h-5 w-5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <div>
-            <p className="text-sm font-medium text-stone-700">Admin Panel</p>
-            <p className="mt-1 text-sm text-stone-500">
-              Use the new payments and invoices sections to manage collections, printable billing, and transaction history.
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {kpiCards.map((card) => (
+          <article
+            key={card.label}
+            className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm"
+          >
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
+              {card.label}
             </p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-stone-900">
+              {card.value}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-stone-500">{card.note}</p>
+          </article>
+        ))}
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+        <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-stone-900">Quick Actions</h2>
+          <p className="mt-1 text-sm text-stone-500">Common admin tasks for daily operations.</p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {quickActions.map((action) => (
+              <Link
+                key={action.path}
+                to={action.path}
+                className="group rounded-xl border border-stone-200 bg-stone-50 px-4 py-4 transition-all hover:border-teal-300 hover:bg-white hover:shadow-sm"
+              >
+                <p className="text-sm font-semibold text-stone-900">{action.title}</p>
+                <p className="mt-1 text-sm leading-6 text-stone-600">{action.desc}</p>
+              </Link>
+            ))}
           </div>
         </div>
-      </div>
+
+        <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-stone-900">Live Operations</h2>
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center justify-between rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+              <p className="text-sm text-stone-600">Approved Orders</p>
+              <p className="text-sm font-semibold text-stone-900">
+                {summary ? formatNumber(summary.sales.approvedOrders) : "..."}
+              </p>
+            </div>
+            <div className="flex items-center justify-between rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+              <p className="text-sm text-stone-600">Outstanding Orders</p>
+              <p className="text-sm font-semibold text-stone-900">
+                {summary ? formatNumber(summary.payments.outstandingOrders) : "..."}
+              </p>
+            </div>
+            <div className="flex items-center justify-between rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+              <p className="text-sm text-stone-600">Delivered Trips</p>
+              <p className="text-sm font-semibold text-stone-900">
+                {summary ? formatNumber(summary.delivery.deliveredTrips) : "..."}
+              </p>
+            </div>
+            <div className="flex items-center justify-between rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+              <p className="text-sm text-stone-600">In Transit Trips</p>
+              <p className="text-sm font-semibold text-stone-900">
+                {summary ? formatNumber(summary.delivery.inTransitTrips) : "..."}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-stone-900">Top Selling Materials</h2>
+          <div className="mt-4 space-y-3">
+            {topMaterials.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-stone-300 bg-stone-50 px-4 py-4 text-sm text-stone-500">
+                No approved order data yet.
+              </p>
+            ) : (
+              topMaterials.map((item) => (
+                <div
+                  key={item.materialName}
+                  className="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="truncate text-sm font-semibold text-stone-900">{item.materialName}</p>
+                    <p className="text-sm text-stone-600">{formatCurrency(item.totalRevenue)}</p>
+                  </div>
+                  <p className="mt-1 text-xs uppercase tracking-wide text-stone-500">
+                    {formatNumber(item.totalQuantity)} {item.unit}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-stone-900">Monthly Revenue</h2>
+          <div className="mt-4 space-y-3">
+            {monthlySummary.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-stone-300 bg-stone-50 px-4 py-4 text-sm text-stone-500">
+                Monthly payment summary will appear after transactions are recorded.
+              </p>
+            ) : (
+              monthlySummary.map((item) => (
+                <div
+                  key={item.month}
+                  className="flex items-center justify-between rounded-xl border border-stone-200 bg-stone-50 px-4 py-3"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-stone-900">{item.label}</p>
+                    <p className="text-xs text-stone-500">{formatNumber(item.transactions)} transactions</p>
+                  </div>
+                  <p className="text-sm font-semibold text-teal-700">{formatCurrency(item.revenue)}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

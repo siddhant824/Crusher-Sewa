@@ -1,9 +1,12 @@
+import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
+import { getDraftOrder } from "../utils/orderDraft.js";
 
 const ContractorLayout = () => {
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
+  const [cartCount, setCartCount] = useState(() => getDraftOrder().length);
 
   const isActive = (path) => location.pathname === path;
 
@@ -11,10 +14,19 @@ const ContractorLayout = () => {
     { path: "/contractor/materials", label: "Materials" },
     { path: "/contractor/orders", label: "My Orders" },
     { path: "/contractor/deliveries", label: "Deliveries" },
-    { path: "/contractor/invoices", label: "Invoices" },
     { path: "/contractor/payments", label: "Payments" },
     { path: "/contractor/profile", label: "Profile" },
   ];
+
+  useEffect(() => {
+    const syncCartCount = () => {
+      setCartCount(getDraftOrder().length);
+    };
+
+    syncCartCount();
+    window.addEventListener("order-cart-updated", syncCartCount);
+    return () => window.removeEventListener("order-cart-updated", syncCartCount);
+  }, [location.pathname]);
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#f7faf9_0%,#f5f5f4_28%,#fafaf9_100%)]">
@@ -62,17 +74,15 @@ const ContractorLayout = () => {
               </nav>
 
               <div className="hidden items-center gap-3 sm:flex">
-                <div className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-white px-3 py-2 shadow-sm">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-teal-100">
-                    <span className="text-sm font-semibold text-teal-700">
-                      {user?.name?.charAt(0) || "C"}
-                    </span>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-stone-900">{user?.name}</p>
-                    <p className="truncate text-xs text-stone-500">{user?.email}</p>
-                  </div>
-                </div>
+                <Link
+                  to="/contractor/cart"
+                  className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition-colors hover:border-stone-300 hover:bg-stone-50 hover:text-stone-900"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 3h2l.4 2m0 0L7 13h10l2-8H5.4zM7 16a2 2 0 100 4 2 2 0 000-4zm10 0a2 2 0 100 4 2 2 0 000-4z" />
+                  </svg>
+                  Cart ({cartCount})
+                </Link>
                 <button
                   onClick={logout}
                   className="rounded-xl border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 transition-colors hover:border-stone-300 hover:bg-stone-50 hover:text-stone-900"

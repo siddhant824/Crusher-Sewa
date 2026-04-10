@@ -4,10 +4,35 @@ import toast from "react-hot-toast";
 
 const AuthContext = createContext(null);
 
+const parseJwtPayload = (token) => {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
+};
+
+const isTokenExpired = (token) => {
+  if (!token) return true;
+  const payload = parseJwtPayload(token);
+  if (!payload || typeof payload.exp !== "number") return false;
+  return payload.exp * 1000 <= Date.now();
+};
+
 const getStoredAuth = () => {
   try {
     const storedUser = localStorage.getItem("cms_user");
     const storedToken = localStorage.getItem("cms_token");
+    const hasValidTokenShape = storedToken && storedToken.split(".").length === 3;
+
+    if (!hasValidTokenShape || isTokenExpired(storedToken)) {
+      return { user: null, token: null };
+    }
+
     return {
       user: storedUser ? JSON.parse(storedUser) : null,
       token: storedToken || null,
@@ -119,7 +144,40 @@ export const AuthProvider = ({ children }) => {
     navigate("/");
   };
 
-  const value = { user, token, login, register, logout };
+  const updateProfile = async ({ name, email }) => {
+    if (!name || !email) {
+      toast.error("Name and email are required");
+      throw new Error("Name and email are required");
+    }
+
+    const activeToken = token || localStorage.getItem("cms_token");
+    if (!activeToken) {
+      toast.error("Please log in again");
+      throw new Error("Token missing");
+    }
+
+    const res = await fetch(`${apiBase}/api/auth/me`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${activeToken}`,
+      },
+      body: JSON.stringify({ name, email }),
+    });
+
+    const data = await parseJsonSafe(res);
+    if (!res.ok) {
+      const errorMessage = data?.message || "Failed to update profile";
+      toast.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    setUser(data.user);
+    toast.success(data.message || "Profile updated successfully");
+    return data.user;
+  };
+
+  const value = { user, token, login, register, logout, updateProfile };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

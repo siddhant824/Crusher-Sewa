@@ -124,3 +124,61 @@ export const loginUser = async (req, res) => {
   }
 };
 
+export const updateMyProfile = async (req, res) => {
+  const { name, email } = req.body;
+
+  if (!name || !email) {
+    return res.status(400).json({
+      message: "Name and email are required",
+    });
+  }
+
+  if (name.trim().length < 2) {
+    return res.status(400).json({
+      message: "Name must be at least 2 characters long",
+    });
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({
+      message: "Please enter a valid email address",
+    });
+  }
+
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    if (normalizedEmail !== user.email) {
+      const existingEmailUser = await User.findOne({ email: normalizedEmail });
+      if (existingEmailUser) {
+        return res.status(400).json({
+          message: "This email is already in use by another account",
+        });
+      }
+    }
+
+    user.name = name.trim();
+    user.email = normalizedEmail;
+    await user.save();
+
+    return res.json({
+      message: "Profile updated successfully",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({
+      message: err.message || "Failed to update profile",
+    });
+  }
+};
+

@@ -60,7 +60,8 @@ const Navbar = () => {
                   Logout
                 </button>
               </>
-            )}
+            )
+            }
           </nav>
         </div>
       </div>

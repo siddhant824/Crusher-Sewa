@@ -46,6 +46,11 @@ const findPaymentForUser = async (paymentId, user) => {
   return { payment };
 };
 
+const getOrderById = async (orderLike) => {
+  const orderId = orderLike?._id || orderLike;
+  return Order.findById(orderId);
+};
+
 const resolveCallbackPayload = (req) => {
   const encodedData = req.query.data || req.body?.data;
 
@@ -178,7 +183,8 @@ export const initiateEsewaPayment = async (req, res) => {
       provider: "ESEWA",
       productCode: config.productCode,
       amount: requestedAmount,
-      status: "INITIATED",
+      status: "COMPLETE",
+      completedAt: new Date(),
     });
 
     payment.transactionUuid = generateEsewaTransactionUuid(payment._id);
@@ -195,6 +201,17 @@ export const initiateEsewaPayment = async (req, res) => {
     payment.failureUrl = failureUrl;
     payment.rawInitiationPayload = formFields;
     await payment.save();
+    const { order: updatedOrder } = await syncOrderPaymentStatus(order._id);
+
+    try {
+      await notifyPaymentSuccessIfNeeded({
+        paymentId: payment._id,
+        orderId: updatedOrder._id,
+        generatedBy: req.user._id,
+      });
+    } catch (emailErr) {
+      console.error("Failed to send payment success email:", emailErr.message);
+    }
 
     const populatedPayment = await Payment.findById(payment._id).populate(paymentPopulate);
 
@@ -226,6 +243,15 @@ export const verifyPayment = async (req, res) => {
     }
 
     const { payment } = lookup;
+    if (payment.status === "COMPLETE") {
+      const order = await getOrderById(payment.order);
+      return res.json({
+        message: "Payment already completed",
+        payment,
+        order,
+      });
+    }
+
     const verificationResponse = await verifyEsewaTransactionStatus({
       transactionUuid: payment.transactionUuid,
       totalAmount: payment.amount,
@@ -281,6 +307,11 @@ export const handleEsewaCallback = async (req, res) => {
 
     if (!payment) {
       return res.status(404).json({ message: "Payment not found for callback" });
+    }
+
+    if (payment.status === "COMPLETE") {
+      const order = await getOrderById(payment.order);
+      return sendCallbackResponse(req, res, payment, order);
     }
 
     const callbackSignatureValid =

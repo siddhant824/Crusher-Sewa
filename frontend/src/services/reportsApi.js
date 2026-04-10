@@ -11,6 +11,12 @@ const getAuthHeaders = () => {
 const parseResponse = async (res) => {
   const data = await res.json();
   if (!res.ok) {
+    if (res.status === 401) {
+      localStorage.removeItem("cms_user");
+      localStorage.removeItem("cms_token");
+      window.location.assign("/login");
+      throw new Error("Session expired. Please log in again.");
+    }
     throw new Error(data.message || "Report request failed");
   }
   return data;

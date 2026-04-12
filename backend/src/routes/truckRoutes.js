@@ -1,13 +1,19 @@
 import { Router } from "express";
 import { requireAuth, authorizeRoles } from "../middleware/authMiddleware.js";
-import { createTruck, getTrucks } from "../controllers/truckController.js";
+import {
+  createTruck,
+  deleteTruck,
+  getTrucks,
+  updateTruck,
+} from "../controllers/truckController.js";
 
 const router = Router();
 
 router.use(requireAuth);
-router.use(authorizeRoles("ADMIN", "MANAGER"));
 
-router.get("/", getTrucks);
-router.post("/", createTruck);
+router.get("/", authorizeRoles("ADMIN", "MANAGER"), getTrucks);
+router.post("/", authorizeRoles("ADMIN"), createTruck);
+router.patch("/:id", authorizeRoles("ADMIN", "MANAGER"), updateTruck);
+router.delete("/:id", authorizeRoles("ADMIN"), deleteTruck);
 
 export default router;

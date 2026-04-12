@@ -97,7 +97,6 @@ const AppRoutes = () => (
       <Route path="/manager/invoices/:id" element={<InvoiceView />} />
       <Route path="/manager/delivery" element={<Navigate to="/manager/orders" replace />} />
       <Route path="/manager/trucks" element={<TrucksManagement />} />
-      <Route path="/manager/trucks/add" element={<AddTruck />} />
       <Route path="/manager/stock" element={<StockControl />} />
     </Route>
     <Route

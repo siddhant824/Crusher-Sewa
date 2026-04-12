@@ -34,3 +34,22 @@ export const createTruck = async (payload) => {
 
   return parseResponse(res);
 };
+
+export const updateTruck = async (id, payload) => {
+  const res = await fetch(`${apiBase}/api/trucks/${id}`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+
+  return parseResponse(res);
+};
+
+export const deleteTruck = async (id) => {
+  const res = await fetch(`${apiBase}/api/trucks/${id}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+
+  return parseResponse(res);
+};

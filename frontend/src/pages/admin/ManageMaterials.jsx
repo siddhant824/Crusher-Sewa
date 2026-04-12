@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "../../hooks/useAuth.js";
 import { getMaterials, updateMaterial, deleteMaterial } from "../../services/materialsApi.js";
+import ConfirmModal from "../../components/ConfirmModal.jsx";
 
 const MATERIALS_PER_PAGE = 10;
 
@@ -20,6 +21,7 @@ const ManageMaterials = () => {
   const [editImageFile, setEditImageFile] = useState(null);
   const [editImagePreview, setEditImagePreview] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [deleteTargetMaterial, setDeleteTargetMaterial] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
 
   const isAdmin = user?.role === "ADMIN";
@@ -126,16 +128,25 @@ const ManageMaterials = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this material?")) {
+  const openDeleteModal = (material) => {
+    setDeleteTargetMaterial(material);
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteTargetMaterial(null);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTargetMaterial) {
       return;
     }
 
-    setDeletingId(id);
+    setDeletingId(deleteTargetMaterial._id);
     try {
-      await deleteMaterial(id);
+      await deleteMaterial(deleteTargetMaterial._id);
       toast.success("Material deleted successfully");
-      fetchMaterials();
+      closeDeleteModal();
+      await fetchMaterials();
     } catch (err) {
       toast.error(err.message || "Failed to delete material");
     } finally {
@@ -332,7 +343,7 @@ const ManageMaterials = () => {
                         </button>
                         {isAdmin && (
                           <button
-                            onClick={() => handleDelete(material._id)}
+                            onClick={() => openDeleteModal(material)}
                             disabled={deletingId === material._id}
                             className="px-3 py-2 text-xs bg-red-50 text-red-600 rounded-lg hover:bg-red-100 font-medium disabled:opacity-50"
                           >
@@ -376,6 +387,20 @@ const ManageMaterials = () => {
           </div>
         </div>
       )}
+      <ConfirmModal
+        isOpen={Boolean(deleteTargetMaterial)}
+        title="Delete Material"
+        message={
+          deleteTargetMaterial
+            ? `Are you sure you want to delete ${deleteTargetMaterial.name}? This action cannot be undone.`
+            : ""
+        }
+        confirmLabel="Delete Material"
+        confirmVariant="danger"
+        loading={Boolean(deleteTargetMaterial) && deletingId === deleteTargetMaterial?._id}
+        onConfirm={handleDelete}
+        onCancel={closeDeleteModal}
+      />
     </div>
   );
 };

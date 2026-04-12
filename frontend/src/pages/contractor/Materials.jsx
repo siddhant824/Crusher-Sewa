@@ -242,7 +242,7 @@ const Materials = () => {
                           : "cursor-not-allowed bg-stone-100 text-stone-400"
                       }`}
                     >
-                      Quick Add
+                      Add to Cart
                     </button>
                   </div>
                 </div>
